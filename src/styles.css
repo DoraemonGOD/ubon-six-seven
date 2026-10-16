@@ -1,0 +1,213 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "IBM Plex Sans Thai", "IBM Plex Sans", sans-serif;
+  --color-bg: #f1f5fb;
+  --color-surface: #ffffff;
+  --color-ink: #122033;
+  --color-muted: #5d6d82;
+  --color-mist: #d7e3f0;
+  --color-line: #d5deea;
+  --color-navy: #122033;
+  --color-blue: #1f4f8a;
+  --color-blue-soft: #e7eef7;
+  --color-ok: #0f7a3d;
+  --color-ok-soft: #e5f6ec;
+  --color-watch: #9a6700;
+  --color-watch-soft: #fff6dd;
+  --color-hit: #c2410c;
+  --color-hit-soft: #ffefe6;
+  --color-crit: #b42318;
+  --color-crit-soft: #fdecea;
+  --color-purple: #6d4bd6;
+  --color-purple-soft: #efeafd;
+  --color-teal: #0f8b7d;
+  --color-teal-soft: #e0f4f1;
+  --color-orange: #e8590c;
+  --color-orange-soft: #fff0e5;
+  --color-sky: #0b84c6;
+  --color-sky-soft: #e2f3fb;
+  --color-indigo: #3b55c9;
+  --color-indigo-soft: #e8ecfb;
+  --color-side: #0e2545;
+  --color-side-2: #163a68;
+  --color-side-line: #26497a;
+  --shadow-card: 0 1px 2px rgb(18 32 51 / 0.04), 0 6px 18px -8px rgb(18 32 51 / 0.12);
+  --radius-card: 1rem;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+  }
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+}
+
+.card {
+  border-radius: var(--radius-card);
+  border: 1px solid color-mix(in srgb, var(--color-line) 70%, transparent);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+
+/* Sidebar and mobile header: deep navy with a faint river glow. */
+.side-surface {
+  background:
+    radial-gradient(120% 60% at 0% 100%, rgb(59 130 246 / 0.18), transparent 60%),
+    linear-gradient(180deg, var(--color-side) 0%, var(--color-side-2) 100%);
+}
+
+/* Home hero: dusk over the Mun river, drawn in CSS so it needs no photo. */
+.hero-surface {
+  background:
+    radial-gradient(90% 120% at 85% 0%, rgb(251 146 60 / 0.35), transparent 55%),
+    radial-gradient(70% 90% at 10% 100%, rgb(56 189 248 / 0.3), transparent 60%),
+    linear-gradient(120deg, #0e2545 0%, #16467e 55%, #1d5fa6 100%);
+}
+
+.maplibregl-ctrl-attrib {
+  font-size: 10px;
+}
+
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  z-index: 0;
+  background: #d7e4f2;
+  font-family: inherit;
+}
+.leaflet-container img {
+  max-width: none !important;
+  max-height: none !important;
+}
+/* District names sit on the polygons; small at province zoom, clearer close up. */
+.leaflet-tooltip.map-district-label {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  color: #122033;
+  font-size: 10px;
+  font-weight: 600;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 2px #fff;
+  white-space: nowrap;
+  opacity: 0 !important;
+  transition: opacity 0.2s;
+}
+.map-zoomed .leaflet-tooltip.map-district-label,
+.leaflet-container:hover .leaflet-tooltip.map-district-label {
+  opacity: 0.9 !important;
+}
+.map-zoomed .leaflet-tooltip.map-district-label {
+  font-size: 12px;
+}
+.leaflet-tooltip.map-district-label::before {
+  display: none;
+}
+.map-place {
+  color: #7d8ea5;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-align: center;
+  white-space: nowrap;
+}
+.leaflet-control-attribution {
+  font-size: 10px;
+  max-width: 70%;
+}
+.tabbar {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.drawer-in {
+  animation: drawer-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes drawer-in {
+  from { transform: translateX(16px); }
+  to { transform: none; }
+}
+.fade-in {
+  animation: fade-in 140ms ease-out both;
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.emergency-mark {
+  position: relative;
+  display: grid;
+  width: 3.5rem;
+  height: 3.5rem;
+  flex: none;
+  place-items: center;
+  font-size: 1.75rem;
+  line-height: 1;
+}
+.emergency-mark::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-surface) 28%, transparent);
+  animation: emergency-ring 1.6s ease-out infinite;
+}
+.emergency-mark > span {
+  position: relative;
+  display: block;
+  animation: emergency-wiggle 1.15s ease-in-out infinite;
+  transform-origin: 50% 65%;
+}
+@keyframes emergency-wiggle {
+  0%,
+  70%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+  12% {
+    transform: rotate(-16deg) scale(1.08);
+  }
+  24% {
+    transform: rotate(14deg) scale(1.14);
+  }
+  36% {
+    transform: rotate(-9deg) scale(1.06);
+  }
+  48% {
+    transform: rotate(5deg) scale(1);
+  }
+}
+@keyframes emergency-ring {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(1.45);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer-in,
+  .fade-in,
+  .emergency-mark::before,
+  .emergency-mark > span {
+    animation: none;
+  }
+}
