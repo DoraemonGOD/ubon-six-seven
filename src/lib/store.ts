@@ -60,6 +60,7 @@ type Store = Data & Alerts & {
   logout: () => Promise<void>;
   unlockRequest: (id: string, tail: string) => Promise<boolean>;
   approveVolunteer: (id: string) => Promise<boolean>;
+  rejectVolunteer: (id: string) => Promise<boolean>;
   setPriority: (id: string, priority: Priority) => Promise<void>;
   setStatus: (id: string, status: RequestStatus) => Promise<void>;
   setRequestVerify: (id: string, verify: VerifyStatus) => Promise<void>;
@@ -174,6 +175,7 @@ export const useFloodStore = create<Store>()((set) => {
     },
     unlockRequest: async (id, tail) => Boolean((await send({ type: "unlockRequest", id, tail }))?.ok),
     approveVolunteer: async (id) => Boolean((await send({ type: "approveVolunteer", id }))?.ok),
+    rejectVolunteer: async (id) => Boolean((await send({ type: "rejectVolunteer", id }))?.ok),
     setPriority: async (id, value) => {
       await send({ type: "setPriority", id, value });
     },

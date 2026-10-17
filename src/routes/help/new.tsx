@@ -1,25 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { FloodMap, type LayerKey } from "@/components/flood-map";
+import { LocationField, type GeoValue } from "@/components/location-field";
+import { PhotoField } from "@/components/photo-field";
 import { AppShell } from "@/components/shell";
 import { Button, Field, PageIntro, Panel, controlClass } from "@/components/ui";
-import { DISTRICTS, HELP_TYPES, PRIORITIES, PRIORITY_LABEL, TYPE_LABEL, isSensitive, type HelpType, type Priority } from "@/lib/model";
+import { DISTRICTS, HELP_TYPES, PRIORITIES, PRIORITY_LABEL, TYPE_LABEL, districtById, isSensitive, type HelpType, type Priority } from "@/lib/model";
 import { ingestPublicReport } from "@/lib/intel/fns";
 import { useFloodStore } from "@/lib/store";
 import { cn } from "@/lib/cn";
 
 export const Route = createFileRoute("/help/new")({ component: HelpNew });
-
-const OFF: Record<LayerKey, boolean> = {
-  situation: true,
-  requests: false,
-  reports: false,
-  shelters: false,
-  relief: false,
-  volunteers: false,
-  roads: false,
-};
 
 function HelpNew() {
   const navigate = useNavigate();
@@ -31,24 +22,10 @@ function HelpNew() {
   const [people, setPeople] = useState(1);
   const [detail, setDetail] = useState("");
   const [phone, setPhone] = useState("");
-  const [pin, setPin] = useState<{ lng: number; lat: number } | null>(null);
+  const [pin, setPin] = useState<GeoValue | null>(null);
   const [photo, setPhoto] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<{ type?: string; place?: string; detail?: string; phone?: string }>({});
-
-  async function onPhoto(file: File | undefined) {
-    if (!file) {
-      setPhoto(undefined);
-      return;
-    }
-    const data = await compress(file);
-    if (data.length > 350_000) {
-      toast("รูปใหญ่ไป ข้ามรูปนี้ได้ คำร้องยังส่งได้");
-      setPhoto(undefined);
-      return;
-    }
-    setPhoto(data);
-  }
 
   async function submit() {
     const digits = phone.replace(/\D/g, "");
@@ -75,6 +52,8 @@ function HelpNew() {
       phone: digits,
       lng: pin?.lng,
       lat: pin?.lat,
+      accuracy: pin?.accuracy,
+      via: pin?.via,
       photo,
     });
     if (!id) {
@@ -136,6 +115,21 @@ function HelpNew() {
               ))}
             </div>
           </Field>
+          <Field label="พิกัด" hint="กด GPS ได้เลย ระบบจะเลือกอำเภอให้ พิกัดจริงเห็นเฉพาะผู้ประสานและทีมที่รับงาน">
+            <LocationField
+              value={pin}
+              onChange={setPin}
+              onDistrict={(id) => {
+                if (id !== districtId) {
+                  setDistrictId(id);
+                  toast(`ตั้งอำเภอเป็น ${districtById(id)?.name ?? ""} ตามพิกัดแล้ว`);
+                }
+              }}
+            />
+            {type && isSensitive(type) ? (
+              <p className="mt-1 text-xs text-watch">คำขอนี้จะไม่เปิดตำแหน่งบ้านบนแผนที่สาธารณะ</p>
+            ) : null}
+          </Field>
           <Field label="อำเภอ">
             <select className={controlClass} value={districtId} onChange={(e) => setDistrictId(e.target.value)}>
               {DISTRICTS.map((d) => (
@@ -154,15 +148,6 @@ function HelpNew() {
                 setErrors((prev) => ({ ...prev, place: undefined }));
               }}
             />
-          </Field>
-          <Field label="ปักจุดคร่าว ๆ บนแผนที่" hint="ไม่บังคับ ถ้าเป็นยาหรือกลุ่มเปราะบาง ระบบจะโชว์แค่ระดับอำเภอ">
-            <div className="relative h-56 overflow-hidden rounded-xl border border-line">
-              <FloodMap layers={OFF} onPick={(lng, lat) => setPin({ lng, lat })} pick={pin} chrome={false} />
-            </div>
-            <p className="mt-1 text-xs text-muted">{pin ? "ปักจุดแล้ว" : "ยังไม่ปัก ระบบใช้จุดกลางอำเภอ"}</p>
-            {type && isSensitive(type) ? (
-              <p className="text-xs text-watch">คำขอนี้จะไม่เปิดตำแหน่งบ้านบนแผนที่สาธารณะ</p>
-            ) : null}
           </Field>
           <Field label="จำนวนคน">
             <input
@@ -215,12 +200,7 @@ function HelpNew() {
             </div>
           </Field>
           <Field label="รูปภาพ ไม่บังคับ">
-            <input
-              className={controlClass}
-              type="file"
-              accept="image/*"
-              onChange={(e) => void onPhoto(e.target.files?.[0])}
-            />
+            <PhotoField value={photo} onChange={setPhoto} hint="รูปช่วยให้ทีมเตรียมของและเรือได้ถูก เห็นเฉพาะผู้ประสานและทีมที่รับงาน" />
           </Field>
           <Button className="w-full" variant="danger" disabled={busy} onClick={() => void submit()}>
             ส่งคำร้อง
@@ -231,25 +211,3 @@ function HelpNew() {
   );
 }
 
-function compress(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      const scale = Math.min(1, 960 / Math.max(img.width, img.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        reject(new Error("canvas"));
-        return;
-      }
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL("image/jpeg", 0.7));
-    };
-    img.onerror = () => reject(new Error("image"));
-    img.src = url;
-  });
-}

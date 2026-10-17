@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Activity,
+  Camera,
   Droplets,
   FileSearch,
   Home,
@@ -30,6 +31,7 @@ const NAV = [
   { to: "/map", label: "แผนที่สถานการณ์", hint: "ดูจุดบนแผนที่", icon: Map },
   { to: "/help/new", label: "ขอความช่วยเหลือ", hint: "ส่งคำร้อง ไม่ต้องสมัคร", icon: Siren },
   { to: "/report/new", label: "แจ้งสถานการณ์", hint: "รายงานน้ำและถนน", icon: Megaphone },
+  { to: "/reports", label: "รายงานล่าสุด", hint: "พิกัดและรูปจากพื้นที่", icon: Camera },
   { to: "/help/track", label: "ติดตามคำร้อง", hint: "ใช้เลข UBN", icon: FileSearch },
   { to: "/volunteer", label: "อาสาสมัคร", hint: "สมัครหรือเข้าสู่ระบบ", icon: Users },
   { to: "/supplies", label: "สิ่งของช่วยเหลือ", hint: "ของที่ยังขาด", icon: Package },

@@ -9,6 +9,8 @@ import {
   isSensitive,
   type Assignment,
   type FieldReport,
+  type GeoPoint,
+  type GeoVia,
   type HelpRequest,
   type HelpType,
   type Precision,
@@ -40,6 +42,8 @@ export type SubmitRequestInput = {
   phone: string;
   lng?: number;
   lat?: number;
+  accuracy?: number;
+  via?: GeoVia;
   photo?: string;
 };
 
@@ -49,6 +53,9 @@ export type SubmitReportInput = {
   summary: string;
   lng?: number;
   lat?: number;
+  accuracy?: number;
+  via?: GeoVia;
+  photo?: string;
 };
 
 export type RegisterInput = {
@@ -80,10 +87,14 @@ export function submitRequest(d: SharedData, id: string, input: SubmitRequestInp
   if (!district) return d;
   const sensitive = isSensitive(input.type);
   const precision: Precision = sensitive ? "tambon" : "approx";
+  const given = input.lng != null && input.lat != null;
+  // The public map gets a blurred point (about 300 m); the exact one stays private.
+  const blur = (v: number) => Math.round(v / 0.003) * 0.003;
   const point =
-    !sensitive && input.lng != null && input.lat != null
-      ? { lng: input.lng, lat: input.lat }
-      : jitter(id, district.lng, district.lat);
+    !sensitive && given ? { lng: blur(input.lng!), lat: blur(input.lat!) } : jitter(id, district.lng, district.lat);
+  const exact: GeoPoint | undefined = given
+    ? { lng: input.lng!, lat: input.lat!, accuracy: input.accuracy, via: input.via ?? "map" }
+    : undefined;
   const place = input.placeLabel.trim();
   const detail = input.detail.trim();
   const req: HelpRequest = {
@@ -102,6 +113,7 @@ export function submitRequest(d: SharedData, id: string, input: SubmitRequestInp
     lng: point.lng,
     lat: point.lat,
     precision,
+    exact,
     photo: input.photo,
     createdAt: ctx.now,
     updatedAt: ctx.now,
@@ -128,6 +140,8 @@ export function submitReport(d: SharedData, input: SubmitReportInput, source: So
     verify: "pending",
     lng: point.lng,
     lat: point.lat,
+    ...(input.lng != null && input.lat != null ? { via: input.via ?? "map", accuracy: input.accuracy } : {}),
+    photo: input.photo,
     createdAt: ctx.now,
     updatedAt: ctx.now,
   };
@@ -151,6 +165,11 @@ export function registerVolunteer(d: SharedData, input: RegisterInput, ctx: Ctx)
     approval: "pending",
   };
   return { data: { ...d, volunteers: [...d.volunteers, vol] }, id };
+}
+
+/** Turn down a sign-up: the record goes away; the person can apply again. */
+export function rejectVolunteer(d: SharedData, id: string): SharedData {
+  return { ...d, volunteers: d.volunteers.filter((item) => !(item.id === id && item.approval === "pending")) };
 }
 
 export function approveVolunteer(d: SharedData, id: string): SharedData {

@@ -15,6 +15,7 @@ import { Route as IntelRouteRouteImport } from './routes/intel/route'
 import { Route as IntelDeniedRouteImport } from './routes/intel-denied'
 import { Route as MapRouteImport } from './routes/map'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as SheltersRouteImport } from './routes/shelters'
 import { Route as SituationRouteImport } from './routes/situation'
 import { Route as SuppliesRouteImport } from './routes/supplies'
@@ -65,6 +66,11 @@ const MapRoute = MapRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SheltersRoute = SheltersRouteImport.update({
@@ -180,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/intel-denied': typeof IntelDeniedRoute
   '/map': typeof MapRoute
   '/privacy': typeof PrivacyRoute
+  '/reports': typeof ReportsRoute
   '/shelters': typeof SheltersRoute
   '/situation': typeof SituationRoute
   '/supplies': typeof SuppliesRoute
@@ -208,6 +215,7 @@ export interface FileRoutesByTo {
   '/intel-denied': typeof IntelDeniedRoute
   '/map': typeof MapRoute
   '/privacy': typeof PrivacyRoute
+  '/reports': typeof ReportsRoute
   '/shelters': typeof SheltersRoute
   '/situation': typeof SituationRoute
   '/supplies': typeof SuppliesRoute
@@ -237,6 +245,7 @@ export interface FileRoutesById {
   '/intel-denied': typeof IntelDeniedRoute
   '/map': typeof MapRoute
   '/privacy': typeof PrivacyRoute
+  '/reports': typeof ReportsRoute
   '/shelters': typeof SheltersRoute
   '/situation': typeof SituationRoute
   '/supplies': typeof SuppliesRoute
@@ -268,6 +277,7 @@ export interface FileRouteTypes {
     | '/intel-denied'
     | '/map'
     | '/privacy'
+    | '/reports'
     | '/shelters'
     | '/situation'
     | '/supplies'
@@ -296,6 +306,7 @@ export interface FileRouteTypes {
     | '/intel-denied'
     | '/map'
     | '/privacy'
+    | '/reports'
     | '/shelters'
     | '/situation'
     | '/supplies'
@@ -324,6 +335,7 @@ export interface FileRouteTypes {
     | '/intel-denied'
     | '/map'
     | '/privacy'
+    | '/reports'
     | '/shelters'
     | '/situation'
     | '/supplies'
@@ -354,6 +366,7 @@ export interface RootRouteChildren {
   IntelDeniedRoute: typeof IntelDeniedRoute
   MapRoute: typeof MapRoute
   PrivacyRoute: typeof PrivacyRoute
+  ReportsRoute: typeof ReportsRoute
   SheltersRoute: typeof SheltersRoute
   SituationRoute: typeof SituationRoute
   SuppliesRoute: typeof SuppliesRoute
@@ -409,6 +422,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/shelters': {
@@ -608,6 +628,7 @@ const rootRouteChildren: RootRouteChildren = {
   IntelDeniedRoute: IntelDeniedRoute,
   MapRoute: MapRoute,
   PrivacyRoute: PrivacyRoute,
+  ReportsRoute: ReportsRoute,
   SheltersRoute: SheltersRoute,
   SituationRoute: SituationRoute,
   SuppliesRoute: SuppliesRoute,

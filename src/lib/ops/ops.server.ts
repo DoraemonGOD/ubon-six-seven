@@ -280,19 +280,47 @@ function isVerifiedVolunteer(me: Me) {
 
 // ---------------------------------------------------------------- view
 
+/** Photos are big: lists only say one exists; the picture is fetched on demand. */
+function stripPhoto<T extends { photo?: string; hasPhoto?: boolean }>(item: T): T {
+  if (!item.photo) return item;
+  const { photo: _photo, ...rest } = item;
+  return { ...rest, hasPhoto: true } as T;
+}
+
+function canSeeRequest(data: SharedData, me: Me, owned: string[], req: HelpRequest) {
+  return (
+    me.role === "coordinator" ||
+    owned.includes(req.id) ||
+    (isVerifiedVolunteer(me) && engine.isAssignee(data, req.id, me.volunteerId))
+  );
+}
+
 function project(data: SharedData, me: Me, owned: string[]): SharedData {
   const volunteers = data.volunteers.map(({ password: _drop, ...vol }) =>
     me.role === "coordinator" || vol.id === me.volunteerId ? vol : { ...vol, phone: "" },
   );
-  if (me.role === "coordinator") return { ...data, volunteers };
-  const mine = (req: HelpRequest) =>
-    owned.includes(req.id) || (isVerifiedVolunteer(me) && engine.isAssignee(data, req.id, me.volunteerId));
+  const reports = data.reports.map(stripPhoto);
+  if (me.role === "coordinator") return { ...data, volunteers, reports, requests: data.requests.map(stripPhoto) };
+  const mine = (req: HelpRequest) => canSeeRequest(data, me, owned, req);
   const requests = data.requests.map((req) =>
-    mine(req) ? req : { ...req, phone: "", detail: req.publicDetail, photo: undefined },
+    mine(req)
+      ? stripPhoto(req)
+      : { ...req, phone: "", detail: req.publicDetail, photo: undefined, hasPhoto: undefined, exact: undefined },
   );
   const visible = new Set(requests.filter(mine).map((req) => req.id));
   const events = data.events.filter((ev) => !ev.internal || visible.has(ev.requestId));
-  return { ...data, requests, events, volunteers };
+  return { ...data, requests, events, volunteers, reports };
+}
+
+/** One photo, checked against the same rules as the rest of the record. */
+export async function readPhoto(kind: "request" | "report", id: string): Promise<string | null> {
+  const sql = await ready();
+  const [data, session] = await Promise.all([load(sql), readSession(sql)]);
+  if (kind === "report") return data.reports.find((r) => r.id === id)?.photo ?? null;
+  const req = data.requests.find((r) => r.id === id);
+  if (!req?.photo) return null;
+  const me = effective(session, data);
+  return canSeeRequest(data, me, session?.owned ?? [], req) ? req.photo : null;
 }
 
 function view(data: SharedData, session: Session | null): OpsView {
@@ -325,6 +353,7 @@ export type OpsAction =
   | { type: "logout" }
   | { type: "unlockRequest"; id: string; tail: string }
   | { type: "approveVolunteer"; id: string }
+  | { type: "rejectVolunteer"; id: string }
   | { type: "setPriority"; id: string; value: string }
   | { type: "setStatus"; id: string; value: string }
   | { type: "setRequestVerify"; id: string; value: string }
@@ -340,6 +369,16 @@ export type OpsResult = { ok: boolean; value?: string; reason?: string; view: Op
 
 const text = (value: unknown, max: number) => String(value ?? "").slice(0, max);
 const finite = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? value : undefined);
+const photoOf = (value: unknown) =>
+  typeof value === "string" && value.startsWith("data:image/") && value.length < 1_500_000 ? value : undefined;
+const viaOf = (value: unknown) => (value === "gps" || value === "map" || value === "typed" ? value : undefined);
+const accuracyOf = (value: unknown) => {
+  const n = finite(value);
+  return n != null && n >= 0 ? Math.round(Math.min(n, 100_000)) : undefined;
+};
+/** Only points inside or near Ubon Ratchathani are kept. */
+const inUbon = (lng?: number, lat?: number) =>
+  lng != null && lat != null && lng > 103.5 && lng < 106.6 && lat > 13.7 && lat < 16.9;
 
 export async function runAction(action: OpsAction): Promise<OpsResult> {
   const sql = await ready();
@@ -361,7 +400,8 @@ export async function runAction(action: OpsAction): Promise<OpsResult> {
       const i = action.input ?? ({} as engine.SubmitRequestInput);
       if (!(i.type in TYPE_LABEL) || !(i.priority in PRIORITY_LABEL) || !districtById(i.districtId)) return deny("invalid");
       if (limited(`req:${clientKey()}`, 20)) return deny("rate");
-      const photo = typeof i.photo === "string" && i.photo.startsWith("data:image/") && i.photo.length < 1_500_000 ? i.photo : undefined;
+      const photo = photoOf(i.photo);
+      const okPoint = inUbon(finite(i.lng), finite(i.lat));
       const [{ n }] = await sql<{ n: number }>`select nextval('ufc_request_seq')::int as n`;
       const id = `UBN-2026-${String(n).padStart(5, "0")}`;
       const next = engine.submitRequest(
@@ -375,8 +415,10 @@ export async function runAction(action: OpsAction): Promise<OpsResult> {
           people: Math.min(Math.max(1, Math.round(Number(i.people) || 1)), 10000),
           detail: text(i.detail, 2000),
           phone: text(i.phone, 20),
-          lng: finite(i.lng),
-          lat: finite(i.lat),
+          lng: okPoint ? finite(i.lng) : undefined,
+          lat: okPoint ? finite(i.lat) : undefined,
+          accuracy: accuracyOf(i.accuracy),
+          via: viaOf(i.via),
           photo,
         },
         c,
@@ -398,7 +440,16 @@ export async function runAction(action: OpsAction): Promise<OpsResult> {
       const source: Source = me.role === "student" ? "student" : me.role === "volunteer" ? "volunteer" : "citizen";
       const { data: next, id } = engine.submitReport(
         data,
-        { districtId: i.districtId, placeLabel: text(i.placeLabel, 200), summary: text(i.summary, 1000), lng: finite(i.lng), lat: finite(i.lat) },
+        {
+          districtId: i.districtId,
+          placeLabel: text(i.placeLabel, 200),
+          summary: text(i.summary, 1000),
+          lng: inUbon(finite(i.lng), finite(i.lat)) ? finite(i.lng) : undefined,
+          lat: inUbon(finite(i.lng), finite(i.lat)) ? finite(i.lat) : undefined,
+          accuracy: accuracyOf(i.accuracy),
+          via: viaOf(i.via),
+          photo: photoOf(i.photo),
+        },
         source,
         c,
       );
@@ -492,6 +543,16 @@ export async function runAction(action: OpsAction): Promise<OpsResult> {
         console.error("[ops] intel sync failed", err);
       }
       return done(true, engine.approveVolunteer(data, vol.id));
+    }
+
+    case "rejectVolunteer": {
+      if (!coord) return deny();
+      const vol = data.volunteers.find((item) => item.id === text(action.id, 40) && item.approval === "pending");
+      if (!vol) return deny("missing");
+      await sql`delete from ufc_volunteer_secret where volunteer_id = ${vol.id}`;
+      // save() only writes rows that changed or were added, so remove this one here.
+      await sql`delete from ufc_record where kind = 'volunteer' and id = ${vol.id}`;
+      return done(true, engine.rejectVolunteer(data, vol.id));
     }
 
     case "setPriority":

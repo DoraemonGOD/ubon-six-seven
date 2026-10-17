@@ -250,8 +250,8 @@ function Home() {
               <h2 className="flex items-center gap-2 font-semibold text-navy">
                 <IconBadge icon={Megaphone} tone="blue" size="sm" /> รายงานสถานการณ์ล่าสุด
               </h2>
-              <Link to="/report/new" className="inline-flex items-center gap-1 text-sm font-semibold text-blue">
-                แจ้งเพิ่ม <ChevronRight className="size-4" />
+              <Link to="/reports" className="inline-flex items-center gap-1 text-sm font-semibold text-blue">
+                ดูทั้งหมด <ChevronRight className="size-4" />
               </Link>
             </div>
             <ul className="mt-3 grid gap-2.5 lg:grid-cols-2">

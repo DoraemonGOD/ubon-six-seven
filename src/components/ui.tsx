@@ -1,6 +1,7 @@
 import { useRouterState } from "@tanstack/react-router";
 import {
   Activity,
+  Camera,
   FileSearch,
   House,
   Info,
@@ -37,6 +38,7 @@ export type Tone = keyof typeof TONES;
 export const SECTIONS: { prefix: string; icon: LucideIcon; tone: Tone }[] = [
   { prefix: "/help/track", icon: FileSearch, tone: "sky" },
   { prefix: "/help", icon: Siren, tone: "red" },
+  { prefix: "/reports", icon: Camera, tone: "purple" },
   { prefix: "/report", icon: Megaphone, tone: "blue" },
   { prefix: "/volunteer", icon: Users, tone: "purple" },
   { prefix: "/supplies", icon: Package, tone: "orange" },

@@ -1,4 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { CoordLine } from "@/components/location-field";
+import { RecordPhoto } from "@/components/photo-field";
 import { AppShell } from "@/components/shell";
 import { Button, PageIntro, Panel, Pill } from "@/components/ui";
 import { STATUS_LABEL, TYPE_LABEL, canSeePrivate, districtById, toneForPriority, PRIORITY_LABEL } from "@/lib/model";
@@ -59,7 +61,18 @@ function Tasks() {
                     โทร {req.phone}
                   </a>
                 ) : null}
-                {req.photo && priv ? <img src={req.photo} alt="รูปที่ผู้แจ้งแนบ" className="mt-3 max-h-48 w-full rounded-xl object-cover" /> : null}
+                <div className="mt-3">
+                  {priv && req.exact ? (
+                    <CoordLine lat={req.exact.lat} lng={req.exact.lng} accuracy={req.exact.accuracy} via={req.exact.via} />
+                  ) : (
+                    <CoordLine lat={req.lat} lng={req.lng} approx />
+                  )}
+                </div>
+                {req.hasPhoto && priv ? (
+                  <div className="mt-3">
+                    <RecordPhoto kind="request" id={req.id} alt="รูปที่ผู้แจ้งแนบ" className="max-h-48 w-full rounded-xl object-cover" />
+                  </div>
+                ) : null}
                 <div className="mt-3 flex gap-2">
                   {req.status === "assigned" ? (
                     <Button onClick={() => progress(req.id, "in_progress")}>เริ่มช่วย</Button>

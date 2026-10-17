@@ -42,6 +42,12 @@ export type Vehicle = "none" | "motorbike" | "pickup" | "boat";
 
 export type Precision = "approx" | "tambon";
 
+/** Where a point came from: the phone's GPS, a tap on the map, or typed numbers. */
+export type GeoVia = "gps" | "map" | "typed";
+
+/** The exact point the sender gave. Private on help requests (like the phone number). */
+export type GeoPoint = { lng: number; lat: number; accuracy?: number; via: GeoVia };
+
 export type District = {
   id: string;
   name: string;
@@ -67,7 +73,11 @@ export type HelpRequest = {
   lng: number;
   lat: number;
   precision: Precision;
+  /** Exact point from the sender; only the coordinator, the sender and the assigned team see it. */
+  exact?: GeoPoint;
+  /** Never sent in list views; fetched on demand with permission checks. */
   photo?: string;
+  hasPhoto?: boolean;
   createdAt: string;
   updatedAt: string;
   assigneeId?: string;
@@ -91,6 +101,11 @@ export type FieldReport = {
   verify: VerifyStatus;
   lng: number;
   lat: number;
+  /** How the point was given and how sure it is (metres), when known. */
+  via?: GeoVia;
+  accuracy?: number;
+  photo?: string;
+  hasPhoto?: boolean;
   createdAt: string;
   updatedAt: string;
   checkerId?: string;
