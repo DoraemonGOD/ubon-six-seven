@@ -114,7 +114,14 @@ function withAlerts(prev: Store, view: OpsView): Partial<Store> {
 }
 
 export const useFloodStore = create<Store>()((set) => {
-  const apply = (view: OpsView) => set((prev) => withAlerts(prev, view));
+  // Last data fingerprint from the server; an action's view clears it so the
+  // next poll always fetches a fresh one.
+  let stamp = "";
+  let polling = false;
+  const apply = (view: OpsView) => {
+    stamp = view.stamp;
+    set((prev) => withAlerts(prev, view));
+  };
   async function send(action: OpsAction): Promise<OpsResult | null> {
     try {
       const result = await runOpsAction({ data: action });
@@ -145,10 +152,17 @@ export const useFloodStore = create<Store>()((set) => {
     dismissAll: () => set({ alerts: [] }),
 
     refresh: async () => {
+      // Skip a tick while the previous poll is still on the wire.
+      if (polling) return;
+      polling = true;
       try {
-        apply(await getOpsView());
+        const result = await getOpsView({ data: { since: stamp || undefined } });
+        if ("unchanged" in result) return;
+        apply(result);
       } catch (err) {
         console.error("[ops] refresh failed", err);
+      } finally {
+        polling = false;
       }
     },
     submitRequest: async (input) => {

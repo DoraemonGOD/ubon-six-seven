@@ -65,7 +65,10 @@ export default defineConfig(({ command, isPreview }) => ({
     tanstackStart(),
     ...(command === "build" || isPreview
       ? [
-          nitro({ preset: "vercel" }),
+          // The Supabase database lives in Sydney (ap-southeast-2). Running the
+          // server functions in the same region turns every query from a
+          // trans-Pacific round trip into a local one.
+          nitro({ preset: "vercel", vercel: { functions: { regions: ["syd1"] } } }),
         ]
       : []),
     viteReact(),

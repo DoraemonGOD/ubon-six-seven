@@ -49,6 +49,8 @@ export type OpsView = SharedData & {
   storage: "database" | "temporary";
   /** True when running on a host (Vercel) where the temporary store is a misconfiguration. */
   hosted: boolean;
+  /** Fingerprint of the stored data + session; polls send it back to skip unchanged downloads. */
+  stamp: string;
 };
 
 const HOSTED = typeof process !== "undefined" && Boolean(process.env.VERCEL || process.env.NODE_ENV === "production");
@@ -169,7 +171,9 @@ function emptyData(): SharedData {
 
 async function load(sql: Sql): Promise<SharedData> {
   const rows = await sql<{ kind: Kind; data: unknown }>`
-    select kind, data from ufc_record order by created_at asc, id asc
+    select kind,
+      case when data ? 'photo' then (data - 'photo') || '{"hasPhoto":true}'::jsonb else data end as data
+    from ufc_record order by created_at asc, id asc
   `;
   const out = emptyData();
   for (const row of rows) {
@@ -202,7 +206,12 @@ async function save(sql: Sql, before: SharedData, after: SharedData) {
       await sql`
         insert into ufc_record (kind, id, data, updated_at)
         values (${kind}, ${item.id}, ${json}::jsonb, clock_timestamp())
-        on conflict (kind, id) do update set data = excluded.data, updated_at = excluded.updated_at
+        on conflict (kind, id) do update set
+          data = case
+            when excluded.data ? 'photo' or not (ufc_record.data ? 'photo') then excluded.data
+            else excluded.data || jsonb_build_object('photo', ufc_record.data -> 'photo')
+          end,
+          updated_at = excluded.updated_at
       `;
     }
   }
@@ -315,15 +324,19 @@ function project(data: SharedData, me: Me, owned: string[]): SharedData {
 /** One photo, checked against the same rules as the rest of the record. */
 export async function readPhoto(kind: "request" | "report", id: string): Promise<string | null> {
   const sql = await ready();
-  const [data, session] = await Promise.all([load(sql), readSession(sql)]);
-  if (kind === "report") return data.reports.find((r) => r.id === id)?.photo ?? null;
+  const photoRow = sql<{ photo: string | null }>`
+    select data ->> 'photo' as photo from ufc_record where kind = ${kind} and id = ${id}
+  `;
+  if (kind === "report") return (await photoRow)[0]?.photo ?? null;
+  const [rows, data, session] = await Promise.all([photoRow, load(sql), readSession(sql)]);
+  const photo = rows[0]?.photo;
   const req = data.requests.find((r) => r.id === id);
-  if (!req?.photo) return null;
+  if (!photo || !req) return null;
   const me = effective(session, data);
-  return canSeeRequest(data, me, session?.owned ?? [], req) ? req.photo : null;
+  return canSeeRequest(data, me, session?.owned ?? [], req) ? photo : null;
 }
 
-function view(data: SharedData, session: Session | null): OpsView {
+function view(data: SharedData, session: Session | null, stamp = ""): OpsView {
   const me = effective(session, data);
   const owned = session?.owned ?? [];
   return {
@@ -333,13 +346,33 @@ function view(data: SharedData, session: Session | null): OpsView {
     demoAdminCode: demoAdminCode(),
     storage: dbSource === "pglite" ? "temporary" : "database",
     hosted: HOSTED,
+    stamp,
   };
 }
 
-export async function readView(): Promise<OpsView> {
+async function dataStamp(sql: Sql) {
+  const [row] = await sql<{ s: string }>`
+    select coalesce(max(updated_at)::text, '') || '#' || count(*)::text as s from ufc_record
+  `;
+  return row?.s ?? "";
+}
+
+function sessionStamp(session: Session | null) {
+  if (!session) return "anon";
+  return `${session.tokenHash.slice(0, 12)}:${session.role}:${session.volunteerId ?? ""}:${session.owned.join(",")}`;
+}
+
+/**
+ * Polls pass the stamp they last saw. One small query (in parallel with the
+ * session lookup) tells whether anything changed; if not, nothing is sent.
+ */
+export async function readView(since?: string): Promise<OpsView | { unchanged: true }> {
   const sql = await ready();
-  const [data, session] = await Promise.all([load(sql), readSession(sql)]);
-  return view(data, session);
+  const [data0, session] = await Promise.all([dataStamp(sql), readSession(sql)]);
+  const stamp = `${data0}|${sessionStamp(session)}`;
+  if (since && since === stamp) return { unchanged: true };
+  const data = await load(sql);
+  return view(data, session, stamp);
 }
 
 // ---------------------------------------------------------------- actions
@@ -382,15 +415,13 @@ const inUbon = (lng?: number, lat?: number) =>
 
 export async function runAction(action: OpsAction): Promise<OpsResult> {
   const sql = await ready();
-  const data = await load(sql);
-  const session = await readSession(sql);
+  const [data, session] = await Promise.all([load(sql), readSession(sql)]);
   const me = effective(session, data);
   const c = ctx();
 
   const done = async (ok: boolean, next: SharedData, extra: { value?: string; reason?: string } = {}, s = session) => {
     if (next !== data) await save(sql, data, next);
-    const fresh = next !== data ? await load(sql) : data;
-    return { ok, ...extra, view: view(fresh, s) };
+    return { ok, ...extra, view: view(next, s) };
   };
   const deny = (reason = "forbidden") => done(false, data, { reason });
   const coord = me.role === "coordinator";

@@ -78,7 +78,7 @@ export function LocationField({
     );
   }
 
-  function useTyped() {
+  function applyTyped() {
     const point = parseCoord(typed);
     if (!point) {
       setProblem("รูปแบบไม่ถูก ใส่ ละติจูด, ลองจิจูด เช่น 15.2286, 104.8564");
@@ -119,10 +119,10 @@ export function LocationField({
             value={typed}
             onChange={(e) => setTyped(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") useTyped();
+              if (e.key === "Enter") applyTyped();
             }}
           />
-          <button type="button" onClick={useTyped} className="min-h-11 shrink-0 rounded-xl bg-navy px-4 text-sm font-semibold text-surface">
+          <button type="button" onClick={applyTyped} className="min-h-11 shrink-0 rounded-xl bg-navy px-4 text-sm font-semibold text-surface">
             ใช้
           </button>
         </div>
