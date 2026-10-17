@@ -19,6 +19,7 @@ import {
 } from "@/lib/model";
 import { useFloodStore } from "@/lib/store";
 import { cn } from "@/lib/cn";
+import { Check } from "lucide-react";
 
 export const Route = createFileRoute("/volunteer/")({ component: VolunteerHome });
 
@@ -35,6 +36,15 @@ const TIME_SLOTS = [
   { id: "evening", label: "เย็น", hint: "17:00–21:00" },
   { id: "night", label: "กลางคืน", hint: "21:00–06:00" },
 ] as const;
+
+// Every toggle on the sign-up form shares one look: a visible border and a
+// light shadow so it reads as tappable, filled when chosen.
+function pick(on: boolean, onClass = "border-blue bg-blue text-surface") {
+  return cn(
+    "border-2 transition active:scale-[0.97]",
+    on ? cn(onClass, "shadow-sm") : "border-muted/45 bg-surface text-ink shadow-sm hover:border-blue",
+  );
+}
 
 const WEEKDAYS = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
 const MONTHS = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
@@ -260,14 +270,14 @@ function VolunteerHome() {
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                className={cn("min-h-11 rounded-xl text-sm font-semibold", tab === "join" ? "bg-navy text-surface" : "bg-surface text-ink")}
+                className={cn("min-h-11 rounded-xl text-sm font-semibold", pick(tab === "join", "border-navy bg-navy text-surface"))}
                 onClick={() => setTab("join")}
               >
                 สมัคร
               </button>
               <button
                 type="button"
-                className={cn("min-h-11 rounded-xl text-sm font-semibold", tab === "login" ? "bg-navy text-surface" : "bg-surface text-ink")}
+                className={cn("min-h-11 rounded-xl text-sm font-semibold", pick(tab === "login", "border-navy bg-navy text-surface"))}
                 onClick={() => setTab("login")}
               >
                 เข้าสู่ระบบ
@@ -292,7 +302,7 @@ function VolunteerHome() {
                       <button
                         key={demo.phone}
                         type="button"
-                        className="min-h-11 rounded-xl border border-line px-3 text-left text-sm"
+                        className={cn("min-h-11 rounded-xl px-3 text-left text-sm", pick(false))}
                         onClick={() => void demoLogin(demo.phone)}
                       >
                         <span className="font-semibold">{demo.name}</span>
@@ -319,9 +329,12 @@ function VolunteerHome() {
                 <button
                   type="button"
                   aria-pressed={student}
-                  className={cn("min-h-11 w-full rounded-xl px-3 text-left text-sm font-semibold", student ? "bg-blue text-surface" : "bg-bg text-ink")}
+                  className={cn("flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold", pick(student))}
                   onClick={() => setStudent((value) => !value)}
                 >
+                  <span className={cn("grid size-5 shrink-0 place-items-center rounded-md border-2", student ? "border-surface bg-surface text-blue" : "border-muted")}>
+                    {student ? <Check className="size-3.5" strokeWidth={3} /> : null}
+                  </span>
                   {student ? "สมัครในฐานะนักศึกษาภาคสนาม" : "ฉันเป็นนักศึกษาภาคสนาม"}
                 </button>
                 <Field label="พาหนะ">
@@ -341,7 +354,7 @@ function VolunteerHome() {
                         type="button"
                         aria-pressed={freeDates.includes(day.key)}
                         onClick={() => toggleDate(day.key)}
-                        className={cn("min-h-11 rounded-full px-3 text-sm font-semibold", freeDates.includes(day.key) ? "bg-blue text-surface" : "bg-bg text-ink")}
+                        className={cn("min-h-11 rounded-full px-3 text-sm font-semibold", pick(freeDates.includes(day.key)))}
                       >
                         {day.label}
                       </button>
@@ -356,10 +369,10 @@ function VolunteerHome() {
                         type="button"
                         aria-pressed={timeSlots.includes(slot.id)}
                         onClick={() => toggleTime(slot.id)}
-                        className={cn("min-h-11 rounded-xl px-3 text-left text-sm", timeSlots.includes(slot.id) ? "bg-navy text-surface" : "bg-bg text-ink")}
+                        className={cn("min-h-11 rounded-xl px-3 py-1.5 text-left text-sm", pick(timeSlots.includes(slot.id)))}
                       >
                         <span className="block font-semibold">{slot.label}</span>
-                        <span className={cn("block text-xs", timeSlots.includes(slot.id) ? "text-mist" : "text-muted")}>{slot.hint}</span>
+                        <span className={cn("block text-xs", timeSlots.includes(slot.id) ? "text-surface/80" : "text-muted")}>{slot.hint}</span>
                       </button>
                     ))}
                   </div>
@@ -372,7 +385,7 @@ function VolunteerHome() {
                         type="button"
                         aria-pressed={skills.includes(skill)}
                         onClick={() => toggleSkill(skill)}
-                        className={cn("min-h-11 rounded-full px-3 text-sm font-semibold", skills.includes(skill) ? "bg-blue text-surface" : "bg-bg text-ink")}
+                        className={cn("min-h-11 rounded-full px-3 text-sm font-semibold", pick(skills.includes(skill)))}
                       >
                         {SKILL_LABEL[skill]}
                       </button>
@@ -380,14 +393,14 @@ function VolunteerHome() {
                   </div>
                 </Field>
                 <Field label="อำเภอที่ไปได้">
-                  <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto">
+                  <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto p-0.5">
                     {DISTRICTS.map((d) => (
                       <button
                         key={d.id}
                         type="button"
                         aria-pressed={districtIds.includes(d.id)}
                         onClick={() => toggleDistrict(d.id)}
-                        className={cn("min-h-11 rounded-full px-3 text-sm", districtIds.includes(d.id) ? "bg-navy text-surface" : "bg-bg text-ink")}
+                        className={cn("min-h-11 rounded-full px-3 text-sm", pick(districtIds.includes(d.id)))}
                       >
                         {d.name}
                       </button>
