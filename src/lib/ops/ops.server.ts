@@ -14,7 +14,10 @@ import {
 } from "@/lib/intel/session.server";
 import {
   PRIORITY_LABEL,
+  SHELTERS,
   SKILL_LABEL,
+  SOURCE_LABEL,
+  SUPPLIES,
   STATUS_LABEL,
   TYPE_LABEL,
   VEHICLE_LABEL,
@@ -22,14 +25,16 @@ import {
   districtById,
   type HelpRequest,
   type Role,
+  type Shelter,
   type Source,
+  type SupplyNeed,
 } from "@/lib/model";
 import * as engine from "./engine";
 import type { SharedData } from "./engine";
 
 const COOKIE = "ufc_ops";
 const SESSION_HOURS = 24 * 7;
-const KINDS = ["request", "event", "report", "volunteer", "assignment"] as const;
+const KINDS = ["request", "event", "report", "volunteer", "assignment", "shelter", "supply"] as const;
 type Kind = (typeof KINDS)[number];
 const KEY: Record<Kind, keyof SharedData> = {
   request: "requests",
@@ -37,6 +42,8 @@ const KEY: Record<Kind, keyof SharedData> = {
   report: "reports",
   volunteer: "volunteers",
   assignment: "assignments",
+  shelter: "shelters",
+  supply: "supplies",
 };
 
 export type Me = { role: Role; volunteerId: string | null };
@@ -128,12 +135,32 @@ let seeding: Promise<void> | null = null;
 
 async function ready() {
   const sql = await getSql();
-  seeding ??= seed(sql).catch((err) => {
-    seeding = null;
-    throw err;
-  });
+  seeding ??= seed(sql)
+    // A missing migration must not take the whole site down with it.
+    .then(() => seedPlaces(sql).catch((err) => console.error("[ops] could not seed shelters/supplies", err)))
+    .catch((err) => {
+      seeding = null;
+      throw err;
+    });
   await seeding;
   return sql;
+}
+
+/**
+ * Shelters and supplies started life as constants. The first time a database
+ * runs this version they are copied in once; after that the back office owns
+ * them, so a deleted shelter stays deleted.
+ */
+async function seedPlaces(sql: Sql) {
+  const done = await sql<{ key: string }>`select key from ufc_meta where key = 'seeded-places'`;
+  if (done.length > 0) return;
+  // Copy first, mark after: if the copy fails it is tried again next time.
+  // Two servers racing here only upsert the same rows twice.
+  await save(sql, emptyData(), { ...emptyData(), shelters: SHELTERS, supplies: SUPPLIES });
+  await sql`
+    insert into ufc_meta (key, value) values ('seeded-places', ${new Date().toISOString()})
+    on conflict (key) do nothing
+  `;
 }
 
 async function seed(sql: Sql) {
@@ -154,6 +181,7 @@ async function seed(sql: Sql) {
     }
   }
   const clean: SharedData = {
+    ...emptyData(),
     ...demo,
     volunteers: demo.volunteers.map(({ password: _drop, ...vol }) => vol),
   };
@@ -166,7 +194,7 @@ async function seed(sql: Sql) {
 }
 
 function emptyData(): SharedData {
-  return { requests: [], events: [], reports: [], volunteers: [], assignments: [] };
+  return { requests: [], events: [], reports: [], volunteers: [], assignments: [], shelters: [], supplies: [] };
 }
 
 async function load(sql: Sql): Promise<SharedData> {
@@ -190,10 +218,14 @@ async function load(sql: Sql): Promise<SharedData> {
   return out;
 }
 
-/** Write only the records that changed between `before` and `after`. */
+/** Write only the records that changed between `before` and `after`; remove the ones that went away. */
 async function save(sql: Sql, before: SharedData, after: SharedData) {
   for (const kind of KINDS) {
     const key = KEY[kind];
+    const kept = new Set((after[key] as { id: string }[]).map((item) => item.id));
+    for (const item of before[key] as { id: string }[]) {
+      if (!kept.has(item.id)) await sql`delete from ufc_record where kind = ${kind} and id = ${item.id}`;
+    }
     const old = new Map<string, string>();
     for (const item of before[key] as { id: string }[]) old.set(item.id, JSON.stringify(item));
     // Lists are newest-first except volunteers; insert oldest first so
@@ -396,6 +428,10 @@ export type OpsAction =
   | { type: "progress"; requestId: string; next: "in_progress" | "done" }
   | { type: "claimReport"; reportId: string }
   | { type: "confirmReport"; reportId: string }
+  | { type: "saveShelter"; shelter: Partial<Shelter> }
+  | { type: "deleteShelter"; id: string }
+  | { type: "saveSupply"; supply: Partial<SupplyNeed> }
+  | { type: "deleteSupply"; id: string }
   | { type: "resetDemo" };
 
 export type OpsResult = { ok: boolean; value?: string; reason?: string; view: OpsView };
@@ -412,6 +448,50 @@ const accuracyOf = (value: unknown) => {
 /** Only points inside or near Ubon Ratchathani are kept. */
 const inUbon = (lng?: number, lat?: number) =>
   lng != null && lat != null && lng > 103.5 && lng < 106.6 && lat > 13.7 && lat < 16.9;
+
+const count = (value: unknown) => {
+  const n = finite(typeof value === "string" ? Number(value) : value);
+  return n == null ? 0 : Math.max(0, Math.min(1_000_000, Math.round(n)));
+};
+
+/** Check a shelter sent from the back office. Unknown ids get a fresh one. */
+function cleanShelter(raw: Partial<Shelter> | undefined, existing: Shelter[]): Shelter | null {
+  if (!raw || typeof raw !== "object") return null;
+  const name = text(raw.name, 120).trim();
+  const district = districtById(text(raw.districtId, 40));
+  if (!name || !district) return null;
+  const prev = existing.find((item) => item.id === raw.id);
+  const lng = finite(raw.lng);
+  const lat = finite(raw.lat);
+  const placed = inUbon(lng, lat);
+  const capacity = count(raw.capacity);
+  const source = typeof raw.source === "string" && raw.source in SOURCE_LABEL ? (raw.source as Source) : (prev?.source ?? "agency");
+  return {
+    id: prev?.id ?? uid("sh"),
+    name,
+    districtId: district.id,
+    lng: placed ? (lng as number) : district.lng,
+    lat: placed ? (lat as number) : district.lat,
+    capacity,
+    current: Math.min(count(raw.current), Math.max(capacity, 1) * 2),
+    facilities: Array.isArray(raw.facilities)
+      ? raw.facilities.map((item) => text(item, 40).trim()).filter(Boolean).slice(0, 12)
+      : [],
+    contact: text(raw.contact, 40).trim(),
+    source,
+    note: text(raw.note, 200).trim(),
+  };
+}
+
+/** Check a supply need sent from the back office. */
+function cleanSupply(raw: Partial<SupplyNeed> | undefined, existing: SupplyNeed[]): SupplyNeed | null {
+  if (!raw || typeof raw !== "object") return null;
+  const item = text(raw.item, 80).trim();
+  const district = districtById(text(raw.districtId, 40));
+  if (!item || !district) return null;
+  const prev = existing.find((entry) => entry.id === raw.id);
+  return { id: prev?.id ?? uid("sup"), districtId: district.id, item, needed: count(raw.needed), have: count(raw.have) };
+}
 
 export async function runAction(action: OpsAction): Promise<OpsResult> {
   const sql = await ready();
@@ -628,13 +708,41 @@ export async function runAction(action: OpsAction): Promise<OpsResult> {
       if (!coord && !isVerifiedVolunteer(me)) return deny();
       return done(true, engine.confirmReport(data, text(action.reportId, 40), c));
 
+    case "saveShelter": {
+      if (!coord) return deny();
+      const shelter = cleanShelter(action.shelter, data.shelters);
+      if (!shelter) return deny("invalid");
+      return done(true, engine.saveShelter(data, shelter), { value: shelter.id });
+    }
+
+    case "deleteShelter": {
+      if (!coord) return deny();
+      const id = text(action.id, 40);
+      if (!data.shelters.some((item) => item.id === id)) return deny("not_found");
+      return done(true, engine.deleteShelter(data, id));
+    }
+
+    case "saveSupply": {
+      if (!coord) return deny();
+      const supply = cleanSupply(action.supply, data.supplies);
+      if (!supply) return deny("invalid");
+      return done(true, engine.saveSupply(data, supply), { value: supply.id });
+    }
+
+    case "deleteSupply": {
+      if (!coord) return deny();
+      const id = text(action.id, 40);
+      if (!data.supplies.some((item) => item.id === id)) return deny("not_found");
+      return done(true, engine.deleteSupply(data, id));
+    }
+
     case "resetDemo": {
       if (!coord) return deny();
       await sql`delete from ufc_record`;
       await sql`delete from ufc_volunteer_secret`;
       await sql`delete from ufc_session where role <> 'coordinator'`;
-      await sql`delete from ufc_meta where key = 'seeded'`;
-      seeding = seed(sql);
+      await sql`delete from ufc_meta where key in ('seeded', 'seeded-places')`;
+      seeding = seed(sql).then(() => seedPlaces(sql));
       await seeding;
       return { ok: true, view: view(await load(sql), session) };
     }

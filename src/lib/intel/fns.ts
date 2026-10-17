@@ -103,16 +103,6 @@ export const getIntelSupplies = createServerFn({ method: "GET" }).handler(async 
   return listSupplies();
 });
 
-export const adjustIntelSupply = createServerFn({ method: "POST" })
-  .validator((data: { id: string; onHand: number }) => ({
-    id: String(data?.id ?? "").slice(0, 40),
-    onHand: Number(data?.onHand ?? 0),
-  }))
-  .handler(async ({ data }) => {
-    const { adjustSupply } = await import("./session.server");
-    return adjustSupply(data.id, data.onHand);
-  });
-
 export const getIntelBriefing = createServerFn({ method: "POST" })
   .validator((data: { districtId?: string; category?: string; verification?: string }) => ({
     districtId: data?.districtId || undefined,

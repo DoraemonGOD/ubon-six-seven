@@ -26,7 +26,6 @@ import {
   DISTRICTS,
   PRIORITY_LABEL,
   PRIORITY_RANK,
-  SHELTERS,
   TYPE_LABEL,
   districtById,
   isOpenStatus,
@@ -62,12 +61,13 @@ function Home() {
   const requests = useFloodStore((s) => s.requests);
   const reports = useFloodStore((s) => s.reports);
   const volunteers = useFloodStore((s) => s.volunteers);
+  const shelters = useFloodStore((s) => s.shelters);
   const open = useMemo(() => requests.filter((req) => isOpenStatus(req.status)), [requests]);
   const working = requests.filter((req) => req.status === "assigned" || req.status === "in_progress").length;
   const resolved = requests.filter((req) => req.status === "resolved").length;
   const affected = DISTRICTS.filter((d) => d.level === "critical" || d.level === "affected").length;
   const critical = DISTRICTS.filter((d) => d.level === "critical").length;
-  const shelterRoom = SHELTERS.reduce((n, s) => n + Math.max(0, s.capacity - s.current), 0);
+  const shelterRoom = shelters.reduce((n, s) => n + Math.max(0, s.capacity - s.current), 0);
   const verifiedVolunteers = volunteers.filter((v) => v.approval === "verified").length;
 
   const urgent = useMemo(
@@ -136,7 +136,7 @@ function Home() {
           <StatCard icon={ClipboardList} tone="red" label="คำร้องทั้งหมด" value={requests.length} note={`เปิดอยู่ ${open.length}`} />
           <StatCard icon={Loader} tone="orange" label="กำลังดำเนินการ" value={working} note="มอบทีมแล้ว" />
           <StatCard icon={CheckCircle2} tone="green" label="ช่วยเหลือแล้ว" value={resolved} note="ปิดงานแล้ว" />
-          <StatCard icon={House} tone="sky" label="ศูนย์พักพิง" value={SHELTERS.length} note={`รับเพิ่มได้ ${shelterRoom.toLocaleString("th-TH")} คน`} />
+          <StatCard icon={House} tone="sky" label="ศูนย์พักพิง" value={shelters.length} note={`รับเพิ่มได้ ${shelterRoom.toLocaleString("th-TH")} คน`} />
           <div className="col-span-2 lg:col-span-1">
             <StatCard icon={Users} tone="purple" label="อาสาสมัคร" value={verifiedVolunteers} note="ยืนยันแล้ว" />
           </div>

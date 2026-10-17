@@ -17,7 +17,9 @@ import {
   type Priority,
   type RequestEvent,
   type RequestStatus,
+  type Shelter,
   type Skill,
+  type SupplyNeed,
   type Source,
   type Vehicle,
   type VerifyStatus,
@@ -30,6 +32,8 @@ export type SharedData = {
   reports: FieldReport[];
   volunteers: Volunteer[];
   assignments: Assignment[];
+  shelters: Shelter[];
+  supplies: SupplyNeed[];
 };
 
 export type SubmitRequestInput = {
@@ -165,6 +169,34 @@ export function registerVolunteer(d: SharedData, input: RegisterInput, ctx: Ctx)
     approval: "pending",
   };
   return { data: { ...d, volunteers: [...d.volunteers, vol] }, id };
+}
+
+// ---------------------------------------------------------------- places
+
+/** Add a shelter, or replace the one with the same id. */
+export function saveShelter(d: SharedData, shelter: Shelter): SharedData {
+  const exists = d.shelters.some((item) => item.id === shelter.id);
+  return {
+    ...d,
+    shelters: exists ? d.shelters.map((item) => (item.id === shelter.id ? shelter : item)) : [...d.shelters, shelter],
+  };
+}
+
+export function deleteShelter(d: SharedData, id: string): SharedData {
+  return { ...d, shelters: d.shelters.filter((item) => item.id !== id) };
+}
+
+/** Add a supply need, or replace the one with the same id. */
+export function saveSupply(d: SharedData, supply: SupplyNeed): SharedData {
+  const exists = d.supplies.some((item) => item.id === supply.id);
+  return {
+    ...d,
+    supplies: exists ? d.supplies.map((item) => (item.id === supply.id ? supply : item)) : [...d.supplies, supply],
+  };
+}
+
+export function deleteSupply(d: SharedData, id: string): SharedData {
+  return { ...d, supplies: d.supplies.filter((item) => item.id !== id) };
 }
 
 /** Turn down a sign-up: the record goes away; the person can apply again. */

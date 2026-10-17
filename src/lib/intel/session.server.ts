@@ -343,7 +343,7 @@ export async function overview() {
     select id, incident_id, status, missing_info, duplicate_of, reason from intel_suggestion order by created_at desc
   `;
   const visibleIds = new Set(open.map((row) => row.id));
-  const supplies = await sql<{ district_id: string; needed: number; on_hand: number }>`select district_id, needed, on_hand from intel_supply`;
+  const supplies = (await opsSupplies(sql)).map((row) => ({ district_id: row.districtId, needed: row.needed, on_hand: row.have }));
   const assigned = new Set(visibleMissions.filter((row) => row.status !== "cancelled").map((row) => row.incident_id));
   return {
     ok: true as const,
@@ -627,39 +627,59 @@ export async function listMissions() {
   };
 }
 
+/**
+ * Supply needs are edited in the back office and stored with the shared
+ * coordination records (kind 'supply'), so the public page, the map and this
+ * room all read the same numbers.
+ */
+async function opsSupplies(sql: Sql) {
+  const rows = await sql<{ data: unknown }>`select data from ufc_record where kind = 'supply' order by created_at`;
+  return rows.map((row) => {
+    const d = (typeof row.data === "string" ? JSON.parse(row.data) : row.data) as {
+      id: string;
+      districtId: string;
+      item: string;
+      needed: number;
+      have: number;
+    };
+    return { id: d.id, districtId: d.districtId, item: d.item, needed: Number(d.needed) || 0, have: Number(d.have) || 0 };
+  });
+}
+
 export async function listSupplies() {
   const { sql, member, access } = await requireMember();
   if (!access.ok || !member) return { ok: false as const, reason: "unauthenticated" as const, items: [] };
-  const rows = await sql<{ id: string; name: string; district_id: string; needed: number; on_hand: number; is_demo: boolean }>`
-    select id, name, district_id, needed, on_hand, is_demo from intel_supply order by name
-  `;
+  const rows = await opsSupplies(sql);
   return {
     ok: true as const,
     canEdit: canReview(member.role),
     items: rows
-      .filter((row) => incidentInScope(member, row.district_id))
+      .filter((row) => incidentInScope(member, row.districtId))
       .map((row) => ({
         id: row.id,
-        name: row.name,
-        districtId: row.district_id,
-        districtName: districtOf(row.district_id).name,
-        needed: Number(row.needed),
-        onHand: Number(row.on_hand),
-        isDemo: row.is_demo,
-        short: Number(row.needed) > Number(row.on_hand),
+        name: row.item,
+        districtId: row.districtId,
+        districtName: districtOf(row.districtId).name,
+        needed: row.needed,
+        onHand: row.have,
+        isDemo: false,
+        short: row.needed > row.have,
       })),
   };
 }
 
-export async function adjustSupply(id: string, onHand: number) {
-  const { sql, member, access } = await requireMember();
-  if (!access.ok || !member || !canReview(member.role)) return { ok: false as const, reason: "forbidden" as const };
-  const amount = Math.max(0, Math.min(100000, Math.round(onHand)));
-  const rows = await sql<{ id: string }>`select id from intel_supply where id = ${id}`;
-  if (!rows[0]) return { ok: false as const, reason: "not_found" as const };
-  await sql`update intel_supply set on_hand = ${amount} where id = ${id}`;
-  await audit(sql, member.id, "supply", id, `คงเหลือ ${amount}`);
-  return { ok: true as const };
+/** One incident line for the summary page, with plain fields the page can lay out. */
+function briefRow(row: IncidentRow) {
+  return {
+    id: row.id,
+    summary: row.summary,
+    district: districtOf(row.district_id).name,
+    category: row.category,
+    urgency: row.urgency,
+    verification: row.verification,
+    outdated: Boolean(row.outdated),
+    updatedAt: stamp(row.updated_at),
+  };
 }
 
 export async function briefing(filter: { districtId?: string; category?: string; verification?: string }) {
@@ -680,10 +700,18 @@ export async function briefing(filter: { districtId?: string; category?: string;
     externalAi: false,
     modelLabel: LOCAL_MODEL,
     generatedAt: new Date().toISOString(),
-    verified: verified.map((row) => ({ id: row.id, text: `${districtOf(row.district_id).name}: ${row.summary}`, updatedAt: stamp(row.updated_at) })),
-    urgent: urgent.map((row) => ({ id: row.id, text: `${row.urgency} · ${row.summary}`, updatedAt: stamp(row.updated_at), verification: row.verification })),
-    unverified: unverified.map((row) => ({ id: row.id, text: row.summary, updatedAt: stamp(row.updated_at), verification: row.verification })),
-    shortages: shortages.map((item) => ({ id: item.id, text: `${item.districtName} ${item.name} คงเหลือ ${item.onHand} จากที่ต้องการ ${item.needed}`, isDemo: item.isDemo })),
+    verified: verified.map(briefRow),
+    urgent: urgent.map(briefRow),
+    unverified: unverified.map(briefRow),
+    shortages: shortages.map((item) => ({
+      id: item.id,
+      name: item.name,
+      district: item.districtName,
+      have: item.onHand,
+      needed: item.needed,
+      text: `${item.districtName} ${item.name} คงเหลือ ${item.onHand} จากที่ต้องการ ${item.needed}`,
+      isDemo: item.isDemo,
+    })),
     gap: "อำเภอที่ไม่มีรายงานในชุดนี้ไม่ได้แปลว่าปลอดภัย แปลว่ายังไม่มีข้อมูลที่ยืนยัน",
     uncovered: DISTRICTS.filter((item) => member.role === "admin" && !covered.has(item.id)).map((item) => item.name),
   };

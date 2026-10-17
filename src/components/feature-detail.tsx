@@ -4,10 +4,8 @@ import {
   PRIORITY_LABEL,
   ROAD_LABEL,
   ROADS,
-  SHELTERS,
   SOURCE_LABEL,
   STATUS_LABEL,
-  SUPPLIES,
   SUPPLY_LABEL,
   TYPE_LABEL,
   VERIFY_LABEL,
@@ -33,6 +31,8 @@ export function FeatureDetail({
   onClose: () => void;
 }) {
   const role = useFloodStore((s) => s.role);
+  const shelters = useFloodStore((s) => s.shelters);
+  const supplies = useFloodStore((s) => s.supplies);
   const requests = useFloodStore((s) => s.requests);
   const reports = useFloodStore((s) => s.reports);
   const volunteers = useFloodStore((s) => s.volunteers);
@@ -130,10 +130,10 @@ export function FeatureDetail({
   }
 
   if (sel.kind === "shelter") {
-    const shelter = SHELTERS.find((item) => item.id === sel.id);
+    const shelter = shelters.find((item) => item.id === sel.id);
     if (!shelter) return null;
     const district = districtById(shelter.districtId);
-    const pct = Math.min(100, Math.round((shelter.current / shelter.capacity) * 100));
+    const pct = shelter.capacity ? Math.min(100, Math.round((shelter.current / shelter.capacity) * 100)) : 100;
     body = (
       <>
         <Pill tone="info">ศูนย์พักพิง</Pill>
@@ -146,16 +146,17 @@ export function FeatureDetail({
           <div className="h-full bg-blue" style={{ width: `${pct}%` }} />
         </div>
         <p className="mt-2 text-sm">{shelter.facilities.join(" · ")}</p>
-        <p className="mt-2 text-sm">ติดต่อจุดพัก {shelter.contact}</p>
+        {shelter.contact ? <p className="mt-2 text-sm">ติดต่อจุดพัก {shelter.contact}</p> : null}
         <p className="mt-2 text-xs leading-relaxed text-muted">
-          แหล่งที่มา: {SOURCE_LABEL[shelter.source]} · {shelter.note}
+          แหล่งที่มา: {SOURCE_LABEL[shelter.source]}
+          {shelter.note ? ` · ${shelter.note}` : ""}
         </p>
       </>
     );
   }
 
   if (sel.kind === "relief") {
-    const item = SUPPLIES.find((supply) => supply.id === sel.id);
+    const item = supplies.find((supply) => supply.id === sel.id);
     if (!item) return null;
     const district = districtById(item.districtId);
     const state = supplyState(item);
@@ -168,7 +169,7 @@ export function FeatureDetail({
         <p className="mt-2 text-sm">
           มีแล้ว {item.have.toLocaleString("th-TH")} จากที่ต้องการ {item.needed.toLocaleString("th-TH")}
         </p>
-        <p className="mt-2 text-xs text-muted">ชุดสาธิต สิ่งของยังไม่ได้เชื่อมผู้บริจาคจริง</p>
+        <p className="mt-2 text-xs text-muted">อัปเดตโดยผู้ประสานในหลังบ้าน</p>
       </>
     );
   }

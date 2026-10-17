@@ -27,8 +27,8 @@ const LINKS = [
   { to: "/intel/review", label: "ตรวจสอบเหตุการณ์", short: "ตรวจเหตุ", icon: FileSearch },
   { to: "/intel/map", label: "แผนที่สถานการณ์", short: "แผนที่", icon: Map },
   { to: "/intel/missions", label: "ภารกิจช่วยเหลือ", short: "ภารกิจ", icon: Truck },
-  { to: "/intel/resources", label: "ทรัพยากรและสิ่งของ", short: "สิ่งของ", icon: Package },
-  { to: "/intel/briefing", label: "สรุปสถานการณ์อัตโนมัติ", short: "สรุป", icon: ScrollText },
+  { to: "/intel/resources", label: "สิ่งของและศูนย์พักพิง", short: "สิ่งของ/ที่พัก", icon: Package },
+  { to: "/intel/briefing", label: "สรุปสถานการณ์", short: "สรุป", icon: ScrollText },
   { to: "/intel/volunteers", label: "ทีมอาสาสมัคร", short: "อาสา", icon: Users },
 ] as const;
 

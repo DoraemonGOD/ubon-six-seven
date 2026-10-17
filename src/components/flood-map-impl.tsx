@@ -7,8 +7,6 @@ import {
   DISTRICTS,
   LEVEL_LABEL,
   ROADS,
-  SHELTERS,
-  SUPPLIES,
   supplyState,
   type MapKind,
   type MapSelection,
@@ -88,6 +86,8 @@ export function FloodMap({
   const requests = useFloodStore((s) => s.requests);
   const reports = useFloodStore((s) => s.reports);
   const volunteers = useFloodStore((s) => s.volunteers);
+  const shelters = useFloodStore((s) => s.shelters);
+  const supplies = useFloodStore((s) => s.supplies);
   const holder = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const groups = useRef<Partial<Record<LayerKey, L.LayerGroup>>>({});
@@ -118,7 +118,7 @@ export function FloodMap({
       }
     }
     if (storeData && layers.relief) {
-      for (const item of SUPPLIES) {
+      for (const item of supplies) {
         if (supplyState(item) === "fulfilled") continue;
         const district = DISTRICTS.find((d) => d.id === item.districtId);
         if (!district) continue;
@@ -135,7 +135,7 @@ export function FloodMap({
       }
     }
     if (storeData && layers.shelters) {
-      for (const shelter of SHELTERS) {
+      for (const shelter of shelters) {
         list.push({
           id: shelter.id,
           kind: "shelter",
@@ -206,7 +206,7 @@ export function FloodMap({
       });
     }
     return list;
-  }, [layers, reports, requests, volunteers, markers, storeData]);
+  }, [layers, reports, requests, volunteers, shelters, supplies, markers, storeData]);
 
   useEffect(() => {
     const el = holder.current;

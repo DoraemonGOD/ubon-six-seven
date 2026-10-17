@@ -5,6 +5,7 @@
 // devices' updates show up, and sends every change to the server, which checks
 // the signed-in role before applying it.
 import { create } from "zustand";
+import { SHELTERS, SUPPLIES } from "@/lib/model";
 import type {
   Assignment,
   FieldReport,
@@ -13,6 +14,8 @@ import type {
   RequestEvent,
   RequestStatus,
   Role,
+  Shelter,
+  SupplyNeed,
   VerifyStatus,
   Volunteer,
 } from "@/lib/model";
@@ -27,6 +30,8 @@ type Data = {
   reports: FieldReport[];
   volunteers: Volunteer[];
   assignments: Assignment[];
+  shelters: Shelter[];
+  supplies: SupplyNeed[];
   role: Role;
   activeVolunteerId: string | null;
   myRequestIds: string[];
@@ -71,6 +76,10 @@ type Store = Data & Alerts & {
   claimReport: (reportId: string) => Promise<void>;
   confirmReport: (reportId: string) => Promise<void>;
   resetDemo: () => Promise<boolean>;
+  saveShelter: (shelter: Partial<Shelter>) => Promise<boolean>;
+  deleteShelter: (id: string) => Promise<boolean>;
+  saveSupply: (supply: Partial<SupplyNeed>) => Promise<boolean>;
+  deleteSupply: (id: string) => Promise<boolean>;
 };
 
 function fromView(view: OpsView): Partial<Data> {
@@ -81,6 +90,8 @@ function fromView(view: OpsView): Partial<Data> {
     reports: view.reports,
     volunteers: view.volunteers,
     assignments: view.assignments,
+    shelters: view.shelters,
+    supplies: view.supplies,
     role: view.me.role,
     activeVolunteerId: view.me.volunteerId,
     myRequestIds: view.ownedRequestIds,
@@ -140,6 +151,9 @@ export const useFloodStore = create<Store>()((set) => {
     reports: [],
     volunteers: [],
     assignments: [],
+    // Shown until the first server view arrives, so pages never start empty.
+    shelters: SHELTERS,
+    supplies: SUPPLIES,
     role: "citizen",
     activeVolunteerId: null,
     myRequestIds: [],
@@ -218,6 +232,10 @@ export const useFloodStore = create<Store>()((set) => {
       await send({ type: "confirmReport", reportId });
     },
     resetDemo: async () => Boolean((await send({ type: "resetDemo" }))?.ok),
+    saveShelter: async (shelter) => Boolean((await send({ type: "saveShelter", shelter }))?.ok),
+    deleteShelter: async (id) => Boolean((await send({ type: "deleteShelter", id }))?.ok),
+    saveSupply: async (supply) => Boolean((await send({ type: "saveSupply", supply }))?.ok),
+    deleteSupply: async (id) => Boolean((await send({ type: "deleteSupply", id }))?.ok),
   };
 });
 
