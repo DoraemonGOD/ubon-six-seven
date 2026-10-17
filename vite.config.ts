@@ -28,7 +28,7 @@ function hasGlobbedMigrations(root: string): boolean {
  */
 function pgliteBootstrapPlugin(): Plugin {
   return {
-    name: "ubon-six-seven:pglite-bootstrap",
+    name: "ubon-flood-link:pglite-bootstrap",
     apply: "serve",
     async configureServer(server) {
       if (!hasGlobbedMigrations(server.config.root)) return;
@@ -40,7 +40,7 @@ function pgliteBootstrapPlugin(): Plugin {
           await mod.ensureDbReady();
         }
       } catch (err) {
-        console.error("[ubon-six-seven] DB bootstrap failed:", err);
+        console.error("[ubon-flood-link] DB bootstrap failed:", err);
         throw err;
       }
     },

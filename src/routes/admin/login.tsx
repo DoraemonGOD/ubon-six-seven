@@ -34,7 +34,7 @@ function AdminLogin() {
       <div className="mx-auto w-full max-w-lg px-4 py-4">
         <PageIntro
           title="เข้าสู่ระบบแอดมิน"
-          lede="รหัสตรวจบนเซิร์ฟเวอร์ เข้าครั้งเดียวใช้ได้ทั้งศูนย์ประสานและ UBON Six Seven Intelligence"
+          lede="รหัสตรวจบนเซิร์ฟเวอร์ เข้าครั้งเดียวใช้ได้ทั้งศูนย์ประสานและ UBON Flood Link Intelligence"
         />
         {role === "coordinator" ? (
           <Panel>

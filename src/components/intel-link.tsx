@@ -5,7 +5,7 @@ import { getIntelAccess } from "@/lib/intel/fns";
 export function IntelLink({
   className,
   onClick,
-  label = "UBON Six Seven Intelligence",
+  label = "UBON Flood Link Intelligence",
 }: {
   className?: string;
   onClick?: () => void;

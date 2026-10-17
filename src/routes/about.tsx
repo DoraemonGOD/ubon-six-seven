@@ -16,7 +16,7 @@ function About() {
       <div className="mx-auto w-full max-w-lg px-4 py-4">
         <PageIntro
           title="เกี่ยวกับโครงการ"
-          lede="UBON Six Seven เป็นต้นแบบศูนย์ประสานน้ำท่วมของจังหวัดอุบลราชธานี สำหรับเครือข่ายมหาวิทยาลัย ชุมชน และหน่วยช่วยเหลือ"
+          lede="UBON Flood Link เป็นต้นแบบศูนย์ประสานน้ำท่วมของจังหวัดอุบลราชธานี สำหรับเครือข่ายมหาวิทยาลัย ชุมชน และหน่วยช่วยเหลือ"
         />
         <div className="space-y-3 text-sm leading-relaxed">
           <Panel>

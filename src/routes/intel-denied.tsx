@@ -15,7 +15,7 @@ function Denied() {
   return (
     <AppShell>
       <div className="mx-auto max-w-lg px-4 py-8">
-        <p className="text-xs text-muted">UBON Six Seven Intelligence</p>
+        <p className="text-xs text-muted">UBON Flood Link Intelligence</p>
         <h1 className="mt-2 text-2xl font-medium text-navy">เข้าห้องนี้ไม่ได้</h1>
         <p className="mt-3 text-sm leading-relaxed text-muted">
           {reason === "pending"

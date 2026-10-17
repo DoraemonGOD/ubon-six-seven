@@ -10,13 +10,13 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "UBON Six Seven" },
+      { title: "UBON Flood Link" },
       {
         name: "description",
         content: "แพลตฟอร์มประสานความช่วยเหลือน้ำท่วมจังหวัดอุบลราชธานี",
       },
       { name: "theme-color", content: "#122033" },
-      { property: "og:title", content: "UBON Six Seven" },
+      { property: "og:title", content: "UBON Flood Link" },
       { property: "og:description", content: "แพลตฟอร์มประสานความช่วยเหลือน้ำท่วมจังหวัดอุบลราชธานี" },
       { property: "og:image", content: "/og.jpg" },
       { name: "twitter:card", content: "summary_large_image" },

@@ -69,7 +69,7 @@ export function IntelFrame({
             <ShieldCheck className="size-5" />
           </span>
           <span className="leading-tight">
-            <span className="block text-base font-bold text-surface">UBON Six Seven</span>
+            <span className="block text-base font-bold text-surface">UBON Flood Link</span>
             <span className="block text-[11px] font-semibold tracking-[0.2em] text-[#fbbf24]">INTELLIGENCE</span>
           </span>
         </Link>
@@ -123,7 +123,7 @@ export function IntelFrame({
               <ArrowLeft className="size-4" />
             </Link>
             <div className="min-w-0 flex-1 leading-tight">
-              <p className="text-sm font-bold text-surface">UBON Six Seven</p>
+              <p className="text-sm font-bold text-surface">UBON Flood Link</p>
               <p className="text-[10px] font-semibold tracking-[0.2em] text-[#fbbf24]">INTELLIGENCE</p>
             </div>
             {member.role === "admin" ? <Link to="/coord" aria-label="คำร้องใหม่" className="relative grid size-9 place-items-center rounded-xl bg-white/10 text-surface">

@@ -52,7 +52,7 @@ function Logo({ compact = false }: { compact?: boolean }) {
         <Droplets className="size-5" strokeWidth={2.4} />
       </span>
       <span className="min-w-0">
-        <span className="block truncate text-base leading-tight font-bold tracking-tight text-surface">UBON Six Seven</span>
+        <span className="block truncate text-base leading-tight font-bold tracking-tight text-surface">UBON Flood Link</span>
         {compact ? null : (
           <span className="block truncate text-[11px] text-mist/80">เชื่อมปัญหา เชื่อมผู้คน เชื่อมความช่วยเหลือ</span>
         )}
@@ -88,7 +88,7 @@ function IntelBox({ onPick }: { onPick?: () => void }) {
   return (
     <div className="rounded-xl border border-side-line bg-white/5 p-3">
       <p className="flex items-center gap-2 text-xs font-bold tracking-wide text-[#fbbf24]">
-        <Lock className="size-3.5" /> UBON Six Seven Intelligence
+        <Lock className="size-3.5" /> UBON Flood Link Intelligence
       </p>
       <p className="mt-1 text-[11px] leading-relaxed text-mist/70">เฉพาะแอดมินและอาสาที่ยืนยันแล้ว</p>
       <IntelLink label="เข้าห้องข่าวกรอง →" className="mt-2 inline-flex text-xs font-semibold text-sky-300 hover:underline" onClick={onPick} />
