@@ -133,6 +133,20 @@ export type Assignment = {
   updatedAt: string;
 };
 
+/** A volunteer certificate. The picture is drawn in the browser from these fields. */
+export type Certificate = {
+  id: string;
+  /** Printed reference, e.g. CERT-2026-000001. */
+  ref: string;
+  volunteerId: string;
+  /** Name printed on the certificate. */
+  name: string;
+  issuedAt: string;
+  /** Points paid; 0 while certificates are free. */
+  cost: number;
+  issuedBy: "self" | "coordinator";
+};
+
 export type Shelter = {
   id: string;
   name: string;

@@ -40,6 +40,7 @@ function base(): SharedData {
     assignments: [],
     shelters: [],
     supplies: [],
+    certificates: [],
   };
 }
 

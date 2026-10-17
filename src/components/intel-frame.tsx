@@ -15,8 +15,7 @@ import {
   ScrollText,
   ShieldCheck,
   Truck,
-  Users,
-} from "lucide-react";
+  Users, Award } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { ROLE_LABEL } from "@/lib/intel/labels";
@@ -32,6 +31,7 @@ const LINKS = [
   { to: "/intel/volunteers", label: "ทีมอาสาสมัคร", short: "อาสา", icon: Users },
 ] as const;
 
+const POINTS_LINK = { to: "/volunteer/points", label: "แต้มและเกียรติบัตร", short: "แต้ม", icon: Award } as const;
 const AUDIT = { to: "/intel/audit", label: "บันทึกกิจกรรม", short: "บันทึก", icon: History } as const;
 
 function thaiDate() {
@@ -54,7 +54,7 @@ export function IntelFrame({
   const newRequests = useFloodStore((s) => s.requests.filter((r) => r.status === "submitted").length);
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const links = member.role === "admin" ? [...LINKS, AUDIT] : LINKS;
+  const links = member.role === "admin" ? [...LINKS, AUDIT] : [...LINKS, POINTS_LINK];
   const signOut = async () => {
     await logout();
     void navigate({ to: "/" });

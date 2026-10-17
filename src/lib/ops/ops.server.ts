@@ -29,12 +29,13 @@ import {
   type Source,
   type SupplyNeed,
 } from "@/lib/model";
+import { CERT_COST, pointsFor } from "@/lib/points";
 import * as engine from "./engine";
 import type { SharedData } from "./engine";
 
 const COOKIE = "ufc_ops";
 const SESSION_HOURS = 24 * 7;
-const KINDS = ["request", "event", "report", "volunteer", "assignment", "shelter", "supply"] as const;
+const KINDS = ["request", "event", "report", "volunteer", "assignment", "shelter", "supply", "certificate"] as const;
 type Kind = (typeof KINDS)[number];
 const KEY: Record<Kind, keyof SharedData> = {
   request: "requests",
@@ -44,6 +45,7 @@ const KEY: Record<Kind, keyof SharedData> = {
   assignment: "assignments",
   shelter: "shelters",
   supply: "supplies",
+  certificate: "certificates",
 };
 
 export type Me = { role: Role; volunteerId: string | null };
@@ -194,7 +196,7 @@ async function seed(sql: Sql) {
 }
 
 function emptyData(): SharedData {
-  return { requests: [], events: [], reports: [], volunteers: [], assignments: [], shelters: [], supplies: [] };
+  return { requests: [], events: [], reports: [], volunteers: [], assignments: [], shelters: [], supplies: [], certificates: [] };
 }
 
 async function load(sql: Sql): Promise<SharedData> {
@@ -342,6 +344,8 @@ function project(data: SharedData, me: Me, owned: string[]): SharedData {
   );
   const reports = data.reports.map(stripPhoto);
   if (me.role === "coordinator") return { ...data, volunteers, reports, requests: data.requests.map(stripPhoto) };
+  // Certificates carry names: each volunteer sees only their own.
+  const certificates = data.certificates.filter((c) => me.volunteerId && c.volunteerId === me.volunteerId);
   const mine = (req: HelpRequest) => canSeeRequest(data, me, owned, req);
   const requests = data.requests.map((req) =>
     mine(req)
@@ -350,7 +354,7 @@ function project(data: SharedData, me: Me, owned: string[]): SharedData {
   );
   const visible = new Set(requests.filter(mine).map((req) => req.id));
   const events = data.events.filter((ev) => !ev.internal || visible.has(ev.requestId));
-  return { ...data, requests, events, volunteers, reports };
+  return { ...data, requests, events, volunteers, reports, certificates };
 }
 
 /** One photo, checked against the same rules as the rest of the record. */
@@ -432,6 +436,8 @@ export type OpsAction =
   | { type: "deleteShelter"; id: string }
   | { type: "saveSupply"; supply: Partial<SupplyNeed> }
   | { type: "deleteSupply"; id: string }
+  | { type: "redeemCertificate"; name: string }
+  | { type: "issueCertificate"; volunteerId: string; name?: string }
   | { type: "resetDemo" };
 
 export type OpsResult = { ok: boolean; value?: string; reason?: string; view: OpsView };
@@ -734,6 +740,30 @@ export async function runAction(action: OpsAction): Promise<OpsResult> {
       const id = text(action.id, 40);
       if (!data.supplies.some((item) => item.id === id)) return deny("not_found");
       return done(true, engine.deleteSupply(data, id));
+    }
+
+    case "redeemCertificate": {
+      if (!isVerifiedVolunteer(me) || !me.volunteerId) return deny();
+      const vol = data.volunteers.find((item) => item.id === me.volunteerId);
+      if (!vol) return deny("not_found");
+      const have = data.certificates.find((c) => c.volunteerId === vol.id);
+      if (have) return done(true, data, { value: have.id });
+      const balance = pointsFor(data.assignments, data.certificates, vol.id).balance;
+      if (balance < CERT_COST) return deny("points");
+      const name = text(action.name, 80).trim() || vol.name;
+      const result = engine.issueCertificate(data, { volunteerId: vol.id, name, cost: CERT_COST, issuedBy: "self" }, c);
+      return done(true, result.data, { value: result.cert.id });
+    }
+
+    case "issueCertificate": {
+      if (!coord) return deny();
+      const vol = data.volunteers.find((item) => item.id === text(action.volunteerId, 40));
+      if (!vol || vol.approval !== "verified") return deny("not_found");
+      const have = data.certificates.find((cert) => cert.volunteerId === vol.id);
+      if (have) return done(true, data, { value: have.id });
+      const name = text(action.name, 80).trim() || vol.name;
+      const result = engine.issueCertificate(data, { volunteerId: vol.id, name, cost: 0, issuedBy: "coordinator" }, c);
+      return done(true, result.data, { value: result.cert.id });
     }
 
     case "resetDemo": {

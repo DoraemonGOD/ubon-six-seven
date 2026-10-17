@@ -8,6 +8,7 @@ import {
   districtById,
   isSensitive,
   type Assignment,
+  type Certificate,
   type FieldReport,
   type GeoPoint,
   type GeoVia,
@@ -34,6 +35,7 @@ export type SharedData = {
   assignments: Assignment[];
   shelters: Shelter[];
   supplies: SupplyNeed[];
+  certificates: Certificate[];
 };
 
 export type SubmitRequestInput = {
@@ -169,6 +171,35 @@ export function registerVolunteer(d: SharedData, input: RegisterInput, ctx: Ctx)
     approval: "pending",
   };
   return { data: { ...d, volunteers: [...d.volunteers, vol] }, id };
+}
+
+// ---------------------------------------------------------------- certificates
+
+/** Next printed reference number, counting up for the year. */
+export function nextCertRef(d: SharedData, now: string) {
+  const year = now.slice(0, 4);
+  const max = d.certificates.reduce((n, c) => {
+    const m = c.ref.match(/^CERT-(\d{4})-(\d+)$/);
+    return m && m[1] === year ? Math.max(n, Number(m[2])) : n;
+  }, 0);
+  return `CERT-${year}-${String(max + 1).padStart(6, "0")}`;
+}
+
+export function issueCertificate(
+  d: SharedData,
+  input: { volunteerId: string; name: string; cost: number; issuedBy: Certificate["issuedBy"] },
+  ctx: Ctx,
+): { data: SharedData; cert: Certificate } {
+  const cert: Certificate = {
+    id: ctx.uid("cert"),
+    ref: nextCertRef(d, ctx.now),
+    volunteerId: input.volunteerId,
+    name: input.name,
+    issuedAt: ctx.now,
+    cost: input.cost,
+    issuedBy: input.issuedBy,
+  };
+  return { data: { ...d, certificates: [...d.certificates, cert] }, cert };
 }
 
 // ---------------------------------------------------------------- places

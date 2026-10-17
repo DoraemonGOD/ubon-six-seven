@@ -221,6 +221,9 @@ function VolunteerHome() {
                 <Link to="/volunteer/tasks" className="inline-flex min-h-11 items-center font-semibold text-blue">
                   ดูงานของฉัน
                 </Link>
+                <Link to="/volunteer/points" className="inline-flex min-h-11 items-center font-semibold text-purple">
+                  แต้มและเกียรติบัตร
+                </Link>
                 <button type="button" className="min-h-11 text-sm font-semibold text-muted" onClick={() => void logout()}>
                   ออกจากระบบ
                 </button>

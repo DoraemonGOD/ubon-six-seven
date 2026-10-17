@@ -16,6 +16,7 @@ import type {
   Role,
   Shelter,
   SupplyNeed,
+  Certificate,
   VerifyStatus,
   Volunteer,
 } from "@/lib/model";
@@ -32,6 +33,7 @@ type Data = {
   assignments: Assignment[];
   shelters: Shelter[];
   supplies: SupplyNeed[];
+  certificates: Certificate[];
   role: Role;
   activeVolunteerId: string | null;
   myRequestIds: string[];
@@ -80,6 +82,9 @@ type Store = Data & Alerts & {
   deleteShelter: (id: string) => Promise<boolean>;
   saveSupply: (supply: Partial<SupplyNeed>) => Promise<boolean>;
   deleteSupply: (id: string) => Promise<boolean>;
+  /** Returns the certificate id, or a reason it could not be issued. */
+  redeemCertificate: (name: string) => Promise<{ id?: string; reason?: string }>;
+  issueCertificate: (volunteerId: string, name?: string) => Promise<{ id?: string; reason?: string }>;
 };
 
 function fromView(view: OpsView): Partial<Data> {
@@ -92,6 +97,7 @@ function fromView(view: OpsView): Partial<Data> {
     assignments: view.assignments,
     shelters: view.shelters,
     supplies: view.supplies,
+    certificates: view.certificates,
     role: view.me.role,
     activeVolunteerId: view.me.volunteerId,
     myRequestIds: view.ownedRequestIds,
@@ -154,6 +160,7 @@ export const useFloodStore = create<Store>()((set) => {
     // Shown until the first server view arrives, so pages never start empty.
     shelters: SHELTERS,
     supplies: SUPPLIES,
+    certificates: [],
     role: "citizen",
     activeVolunteerId: null,
     myRequestIds: [],
@@ -236,6 +243,16 @@ export const useFloodStore = create<Store>()((set) => {
     deleteShelter: async (id) => Boolean((await send({ type: "deleteShelter", id }))?.ok),
     saveSupply: async (supply) => Boolean((await send({ type: "saveSupply", supply }))?.ok),
     deleteSupply: async (id) => Boolean((await send({ type: "deleteSupply", id }))?.ok),
+    redeemCertificate: async (name) => {
+      const r = await send({ type: "redeemCertificate", name });
+      if (!r) return { reason: "network" };
+      return r.ok ? { id: r.value } : { reason: r.reason ?? "unknown" };
+    },
+    issueCertificate: async (volunteerId, name) => {
+      const r = await send({ type: "issueCertificate", volunteerId, name });
+      if (!r) return { reason: "network" };
+      return r.ok ? { id: r.value } : { reason: r.reason ?? "unknown" };
+    },
   };
 });
 

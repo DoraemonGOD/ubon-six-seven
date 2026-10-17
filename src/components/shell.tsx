@@ -19,6 +19,7 @@ import {
   Siren,
   Users,
   X,
+  Award,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { IntelLink } from "@/components/intel-link";
@@ -33,7 +34,8 @@ const NAV = [
   { to: "/report/new", label: "แจ้งสถานการณ์", hint: "รายงานน้ำและถนน", icon: Megaphone },
   { to: "/reports", label: "รายงานล่าสุด", hint: "พิกัดและรูปจากพื้นที่", icon: Camera },
   { to: "/help/track", label: "ติดตามคำร้อง", hint: "ใช้เลข UBN", icon: FileSearch },
-  { to: "/volunteer", label: "อาสาสมัคร", hint: "สมัครหรือเข้าสู่ระบบ", icon: Users },
+  { to: "/volunteer", label: "อาสาสมัคร", hint: "สมัครหรือเข้าสู่ระบบ", icon: Users, exact: true },
+  { to: "/volunteer/points", label: "แต้มและเกียรติบัตร", hint: "สะสมแต้ม แลกเกียรติบัตร", icon: Award },
   { to: "/supplies", label: "สิ่งของช่วยเหลือ", hint: "ของที่ยังขาด", icon: Package },
   { to: "/shelters", label: "ศูนย์พักพิง", hint: "ที่พักชั่วคราว", icon: House },
   { to: "/situation", label: "สถานการณ์รายอำเภอ", hint: "สรุปแต่ละอำเภอ", icon: Activity },
@@ -185,9 +187,14 @@ export function AppShell({ children, bleed = false }: { children: ReactNode; ble
             {signedIn ? (
               <>
                 {role === "coordinator" ? null : (
-                  <Link to="/volunteer/tasks" className="text-sm font-semibold text-blue">
-                    งานของฉัน
-                  </Link>
+                  <>
+                    <Link to="/volunteer/tasks" className="text-sm font-semibold text-blue">
+                      งานของฉัน
+                    </Link>
+                    <Link to="/volunteer/points" className="text-sm font-semibold text-purple">
+                      แต้มของฉัน
+                    </Link>
+                  </>
                 )}
                 <div className="flex items-center gap-2.5 rounded-full border border-line py-1 pr-3 pl-1">
                   <span className="grid size-8 place-items-center rounded-full bg-linear-to-br from-purple to-blue text-sm font-bold text-surface">

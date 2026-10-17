@@ -1,8 +1,8 @@
 // The coordinator's desk: three tabs (requests, volunteers waiting, the team).
 // Each request card says what to do next; volunteers are approved in one tap.
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { AlertTriangle, Check, ChevronRight, ClipboardCheck, List, Map as MapIcon, Phone, Truck, UserPlus, Users, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, Award, Check, ChevronRight, ClipboardCheck, List, Map as MapIcon, Phone, Truck, UserPlus, Users, X } from "lucide-react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { FloodMap, type LayerKey } from "@/components/flood-map";
 import { AppShell } from "@/components/shell";
@@ -22,7 +22,10 @@ import {
   type MapSelection,
   type Volunteer,
 } from "@/lib/model";
+import { pointsFor } from "@/lib/points";
 import { useFloodStore } from "@/lib/store";
+
+const CertificateView = lazy(() => import("@/components/certificate").then((m) => ({ default: m.CertificateView })));
 import { ago } from "@/lib/time";
 
 export const Route = createFileRoute("/coord/")({ component: CoordHome });
@@ -395,13 +398,20 @@ function PendingCard({ v }: { v: Volunteer }) {
 
 function TeamTab({ list }: { list: Volunteer[] }) {
   const assignments = useFloodStore((s) => s.assignments);
+  const certificates = useFloodStore((s) => s.certificates);
+  const issueCertificate = useFloodStore((s) => s.issueCertificate);
+  const [open, setOpen] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
   if (list.length === 0) return <div className="card p-6 text-center text-sm text-muted">ยังไม่มีอาสาที่ยืนยันแล้ว</div>;
   return (
-    <ul className="grid gap-2 lg:grid-cols-2">
+    <ul className="grid grid-cols-1 gap-2 lg:grid-cols-2">
       {list.map((v) => {
         const load = assignments.filter((a) => a.volunteerId === v.id && (a.status === "assigned" || a.status === "in_progress")).length;
+        const points = pointsFor(assignments, certificates, v.id);
+        const cert = certificates.find((c) => c.volunteerId === v.id);
         return (
-          <li key={v.id} className="card flex items-center gap-3 p-3">
+          <li key={v.id} className="card min-w-0 p-3">
+            <div className="flex min-w-0 items-center gap-3">
             <span className="grid size-10 shrink-0 place-items-center rounded-full bg-blue-soft font-semibold text-blue">{v.name.slice(0, 1)}</span>
             <div className="min-w-0 flex-1">
               <p className="truncate font-semibold text-navy">{v.name}</p>
@@ -416,6 +426,46 @@ function TeamTab({ list }: { list: Volunteer[] }) {
               <a href={`tel:${v.phone}`} className="grid size-10 place-items-center rounded-xl bg-ok text-surface" aria-label={`โทรหา ${v.name}`}>
                 <Phone className="size-4" />
               </a>
+            ) : null}
+            </div>
+            <div className="mt-2 flex items-center justify-between gap-2 border-t border-line pt-2">
+              <span className="text-sm">
+                <span className="font-semibold text-purple">{points.balance} แต้ม</span>
+                <span className="text-xs text-muted"> · รับ {points.taken} · สำเร็จ {points.finished}</span>
+              </span>
+              {cert ? (
+                <button
+                  type="button"
+                  onClick={() => setOpen(open === v.id ? null : v.id)}
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border-2 border-line px-3 text-sm font-semibold text-purple"
+                >
+                  <Award className="size-4" /> {open === v.id ? "ซ่อน" : "ดูเกียรติบัตร"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={busy === v.id}
+                  onClick={async () => {
+                    setBusy(v.id);
+                    const r = await issueCertificate(v.id);
+                    setBusy(null);
+                    if (r.id) {
+                      toast.success(`ออกเกียรติบัตรให้ ${v.name} แล้ว`);
+                      setOpen(v.id);
+                    } else toast("ออกเกียรติบัตรไม่ได้");
+                  }}
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-purple px-3 text-sm font-semibold text-surface disabled:opacity-60"
+                >
+                  <Award className="size-4" /> ออกเกียรติบัตร
+                </button>
+              )}
+            </div>
+            {cert && open === v.id ? (
+              <div className="fade-in mt-3">
+                <Suspense fallback={<p className="text-sm text-muted">กำลังโหลด…</p>}>
+                  <CertificateView cert={cert} />
+                </Suspense>
+              </div>
             ) : null}
           </li>
         );

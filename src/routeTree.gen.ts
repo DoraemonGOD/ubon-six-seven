@@ -33,6 +33,7 @@ import { Route as IntelReviewRouteImport } from './routes/intel/review'
 import { Route as IntelVolunteersRouteImport } from './routes/intel/volunteers'
 import { Route as ReportNewRouteImport } from './routes/report/new'
 import { Route as VolunteerIndexRouteImport } from './routes/volunteer/index'
+import { Route as VolunteerPointsRouteImport } from './routes/volunteer/points'
 import { Route as VolunteerTasksRouteImport } from './routes/volunteer/tasks'
 import { Route as CoordRequestsIdRouteImport } from './routes/coord/requests.$id'
 import { Route as IntelReviewIndexRouteImport } from './routes/intel/review.index'
@@ -158,6 +159,11 @@ const VolunteerIndexRoute = VolunteerIndexRouteImport.update({
   path: '/volunteer/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VolunteerPointsRoute = VolunteerPointsRouteImport.update({
+  id: '/volunteer/points',
+  path: '/volunteer/points',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const VolunteerTasksRoute = VolunteerTasksRouteImport.update({
   id: '/volunteer/tasks',
   path: '/volunteer/tasks',
@@ -201,6 +207,7 @@ export interface FileRoutesByFullPath {
   '/intel/review': typeof IntelReviewRouteWithChildren
   '/intel/volunteers': typeof IntelVolunteersRoute
   '/report/new': typeof ReportNewRoute
+  '/volunteer/points': typeof VolunteerPointsRoute
   '/volunteer/tasks': typeof VolunteerTasksRoute
   '/coord/': typeof CoordIndexRoute
   '/intel/': typeof IntelIndexRoute
@@ -229,6 +236,7 @@ export interface FileRoutesByTo {
   '/intel/resources': typeof IntelResourcesRoute
   '/intel/volunteers': typeof IntelVolunteersRoute
   '/report/new': typeof ReportNewRoute
+  '/volunteer/points': typeof VolunteerPointsRoute
   '/volunteer/tasks': typeof VolunteerTasksRoute
   '/coord': typeof CoordIndexRoute
   '/intel': typeof IntelIndexRoute
@@ -260,6 +268,7 @@ export interface FileRoutesById {
   '/intel/review': typeof IntelReviewRouteWithChildren
   '/intel/volunteers': typeof IntelVolunteersRoute
   '/report/new': typeof ReportNewRoute
+  '/volunteer/points': typeof VolunteerPointsRoute
   '/volunteer/tasks': typeof VolunteerTasksRoute
   '/coord/': typeof CoordIndexRoute
   '/intel/': typeof IntelIndexRoute
@@ -292,6 +301,7 @@ export interface FileRouteTypes {
     | '/intel/review'
     | '/intel/volunteers'
     | '/report/new'
+    | '/volunteer/points'
     | '/volunteer/tasks'
     | '/coord/'
     | '/intel/'
@@ -320,6 +330,7 @@ export interface FileRouteTypes {
     | '/intel/resources'
     | '/intel/volunteers'
     | '/report/new'
+    | '/volunteer/points'
     | '/volunteer/tasks'
     | '/coord'
     | '/intel'
@@ -350,6 +361,7 @@ export interface FileRouteTypes {
     | '/intel/review'
     | '/intel/volunteers'
     | '/report/new'
+    | '/volunteer/points'
     | '/volunteer/tasks'
     | '/coord/'
     | '/intel/'
@@ -374,6 +386,7 @@ export interface RootRouteChildren {
   HelpNewRoute: typeof HelpNewRoute
   HelpTrackRoute: typeof HelpTrackRoute
   ReportNewRoute: typeof ReportNewRoute
+  VolunteerPointsRoute: typeof VolunteerPointsRoute
   VolunteerTasksRoute: typeof VolunteerTasksRoute
   CoordIndexRoute: typeof CoordIndexRoute
   VolunteerIndexRoute: typeof VolunteerIndexRoute
@@ -550,6 +563,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VolunteerIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/volunteer/points': {
+      id: '/volunteer/points'
+      path: '/volunteer/points'
+      fullPath: '/volunteer/points'
+      preLoaderRoute: typeof VolunteerPointsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/volunteer/tasks': {
       id: '/volunteer/tasks'
       path: '/volunteer/tasks'
@@ -636,6 +656,7 @@ const rootRouteChildren: RootRouteChildren = {
   HelpNewRoute: HelpNewRoute,
   HelpTrackRoute: HelpTrackRoute,
   ReportNewRoute: ReportNewRoute,
+  VolunteerPointsRoute: VolunteerPointsRoute,
   VolunteerTasksRoute: VolunteerTasksRoute,
   CoordIndexRoute: CoordIndexRoute,
   VolunteerIndexRoute: VolunteerIndexRoute,
