@@ -188,7 +188,7 @@ function CoordHome() {
             {rows.length === 0 ? <li className="text-sm text-muted">ไม่มีคำร้องตามตัวกรอง</li> : null}
           </ul>
         )}
-        <h2 className="mt-6 text-base font-semibold">รอแอดมินยืนยัน</h2>
+        <h2 id="volunteers" className="mt-6 scroll-mt-24 text-base font-semibold">อาสารอแอดมินยืนยัน ({volunteers.filter((vol) => vol.approval === "pending").length})</h2>
         <ul className="mt-2 space-y-2">
           {volunteers.filter((vol) => vol.approval === "pending").map((vol) => (
             <li key={vol.id} className="rounded-2xl border border-line bg-surface p-3 text-sm">

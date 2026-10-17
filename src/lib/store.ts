@@ -31,13 +31,30 @@ type Data = {
   activeVolunteerId: string | null;
   myRequestIds: string[];
   demoAdminCode: string | null;
+  storage: "database" | "temporary";
+  hosted: boolean;
 };
 
-type Store = Data & {
+/** Something new a coordinator should look at right away. */
+export type OpsAlert =
+  | { key: string; kind: "request"; request: HelpRequest }
+  | { key: string; kind: "volunteer"; volunteer: Volunteer };
+
+type Alerts = {
+  alerts: OpsAlert[];
+  /** Ids already seen by this browser; null until the first view arrives. */
+  seen: { requests: Set<string>; volunteers: Set<string> } | null;
+  dismissAlert: (key: string) => void;
+  dismissAll: () => void;
+};
+
+export type RegisterResult = { id: string; reason?: string };
+
+type Store = Data & Alerts & {
   refresh: () => Promise<void>;
   submitRequest: (input: SubmitRequestInput) => Promise<string>;
   submitReport: (input: SubmitReportInput) => Promise<string>;
-  registerVolunteer: (input: RegisterInput & { password: string }) => Promise<string>;
+  registerVolunteer: (input: RegisterInput & { password: string }) => Promise<RegisterResult>;
   loginVolunteer: (phone: string, password: string) => Promise<"ok" | "pending" | "denied">;
   loginAdmin: (code: string) => Promise<boolean>;
   logout: () => Promise<void>;
@@ -67,14 +84,40 @@ function fromView(view: OpsView): Partial<Data> {
     activeVolunteerId: view.me.volunteerId,
     myRequestIds: view.ownedRequestIds,
     demoAdminCode: view.demoAdminCode,
+    storage: view.storage,
+    hosted: view.hosted,
   };
 }
 
+/** Compare a fresh view with what this browser has seen; new items become alerts for coordinators. */
+function withAlerts(prev: Store, view: OpsView): Partial<Store> {
+  const base = fromView(view);
+  const reqIds = new Set(view.requests.map((r) => r.id));
+  const volIds = new Set(view.volunteers.map((v) => v.id));
+  const seen = { requests: reqIds, volunteers: volIds };
+  if (!prev.seen || view.me.role !== "coordinator") {
+    return { ...base, seen, alerts: view.me.role === "coordinator" ? prev.alerts : [] };
+  }
+  const fresh: OpsAlert[] = [];
+  for (const request of view.requests) {
+    if (!prev.seen.requests.has(request.id)) fresh.push({ key: `r:${request.id}`, kind: "request", request });
+  }
+  for (const volunteer of view.volunteers) {
+    if (!prev.seen.volunteers.has(volunteer.id) && volunteer.approval === "pending") {
+      fresh.push({ key: `v:${volunteer.id}`, kind: "volunteer", volunteer });
+    }
+  }
+  if (!fresh.length) return { ...base, seen };
+  const known = new Set(prev.alerts.map((a) => a.key));
+  return { ...base, seen, alerts: [...fresh.filter((a) => !known.has(a.key)), ...prev.alerts].slice(0, 20) };
+}
+
 export const useFloodStore = create<Store>()((set) => {
+  const apply = (view: OpsView) => set((prev) => withAlerts(prev, view));
   async function send(action: OpsAction): Promise<OpsResult | null> {
     try {
       const result = await runOpsAction({ data: action });
-      set(fromView(result.view));
+      apply(result.view);
       return result;
     } catch (err) {
       console.error("[ops]", err);
@@ -93,10 +136,16 @@ export const useFloodStore = create<Store>()((set) => {
     activeVolunteerId: null,
     myRequestIds: [],
     demoAdminCode: null,
+    storage: "database",
+    hosted: false,
+    alerts: [],
+    seen: null,
+    dismissAlert: (key) => set((prev) => ({ alerts: prev.alerts.filter((a) => a.key !== key) })),
+    dismissAll: () => set({ alerts: [] }),
 
     refresh: async () => {
       try {
-        set(fromView(await getOpsView()));
+        apply(await getOpsView());
       } catch (err) {
         console.error("[ops] refresh failed", err);
       }
@@ -111,7 +160,8 @@ export const useFloodStore = create<Store>()((set) => {
     },
     registerVolunteer: async (input) => {
       const r = await send({ type: "registerVolunteer", input });
-      return r?.ok ? (r.value ?? "") : "";
+      if (!r) return { id: "", reason: "network" };
+      return r.ok ? { id: r.value ?? "" } : { id: "", reason: r.reason ?? "unknown" };
     },
     loginVolunteer: async (phone, password) => {
       const r = await send({ type: "loginVolunteer", phone, password });
@@ -156,7 +206,7 @@ export const useFloodStore = create<Store>()((set) => {
 });
 
 /** Keep this browser in step with the server: load now, then poll while visible. */
-export function startOpsSync(intervalMs = 5000) {
+export function startOpsSync(intervalMs = 4000) {
   const { refresh } = useFloodStore.getState();
   void refresh();
   const tick = () => {

@@ -1,6 +1,7 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Toaster } from "sonner";
+import { AlertCenter } from "@/components/alert-center";
 import { startOpsSync } from "@/lib/store";
 import appCss from "../styles.css?url";
 
@@ -42,6 +43,7 @@ function Root() {
       </head>
       <body>
         <Boot />
+        <AlertCenter />
         <Toaster position="top-center" />
         <Scripts />
       </body>

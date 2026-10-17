@@ -18,12 +18,12 @@ function Briefing() {
   if (!data.ok) return <p className="text-sm">ไม่มีสิทธิ์</p>;
   return (
     <div>
-      <h1 className="text-xl font-medium text-navy">สรุปสถานการณ์</h1>
+      <h1 className="text-2xl font-semibold text-navy">สรุปสถานการณ์อัตโนมัติ</h1>
       <p className="mt-1 text-sm text-muted">
         สรุปจากแถวที่คุณมีสิทธิ์เห็น ณ {data.generatedAt} ไม่ได้เรียกโมเดลภายนอก ({data.modelLabel})
       </p>
       <div className="mt-3 grid gap-2 sm:grid-cols-4">
-        <select className="min-h-11 border border-line bg-surface px-2 text-sm" value={districtId} onChange={(event) => setDistrictId(event.target.value)}>
+        <select className="min-h-11 rounded-xl border border-line bg-surface px-3 text-sm" value={districtId} onChange={(event) => setDistrictId(event.target.value)}>
           <option value="">ทุกอำเภอในสิทธิ์</option>
           {DISTRICTS.map((item) => (
             <option key={item.id} value={item.id}>
@@ -31,7 +31,7 @@ function Briefing() {
             </option>
           ))}
         </select>
-        <select className="min-h-11 border border-line bg-surface px-2 text-sm" value={category} onChange={(event) => setCategory(event.target.value)}>
+        <select className="min-h-11 rounded-xl border border-line bg-surface px-3 text-sm" value={category} onChange={(event) => setCategory(event.target.value)}>
           <option value="">ทุกหมวด</option>
           {Object.entries(CATEGORY_LABEL).map(([id, label]) => (
             <option key={id} value={id}>
@@ -39,7 +39,7 @@ function Briefing() {
             </option>
           ))}
         </select>
-        <select className="min-h-11 border border-line bg-surface px-2 text-sm" value={verification} onChange={(event) => setVerification(event.target.value)}>
+        <select className="min-h-11 rounded-xl border border-line bg-surface px-3 text-sm" value={verification} onChange={(event) => setVerification(event.target.value)}>
           <option value="">ทุกสถานะ</option>
           {Object.entries(VERIFY_LABEL).map(([id, label]) => (
             <option key={id} value={id}>

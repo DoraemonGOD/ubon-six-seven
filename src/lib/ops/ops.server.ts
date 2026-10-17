@@ -3,9 +3,15 @@
 // decides, per signed-in role, what each browser is allowed to see and change.
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { deleteCookie, getCookie, getRequestHeader, setCookie } from "@tanstack/react-start/server";
-import { getSql, type Sql } from "@/lib/db";
+import { dbSource, getSql, type Sql } from "@/lib/db";
 import { createDemoRecords } from "@/lib/demo";
-import { loginAdmin as intelLoginAdmin, logoutIntel } from "@/lib/intel/session.server";
+import {
+  loginAdmin as intelLoginAdmin,
+  loginVolunteer as intelLoginVolunteer,
+  logoutIntel,
+  registerVolunteerAccount as intelRegister,
+  syncVolunteerRole,
+} from "@/lib/intel/session.server";
 import {
   PRIORITY_LABEL,
   SKILL_LABEL,
@@ -39,7 +45,18 @@ export type OpsView = SharedData & {
   me: Me;
   ownedRequestIds: string[];
   demoAdminCode: string | null;
+  /** "database" = shared Postgres; "temporary" = per-instance in-memory fallback. */
+  storage: "database" | "temporary";
+  /** True when running on a host (Vercel) where the temporary store is a misconfiguration. */
+  hosted: boolean;
 };
+
+const HOSTED = typeof process !== "undefined" && Boolean(process.env.VERCEL || process.env.NODE_ENV === "production");
+if (HOSTED && dbSource === "pglite") {
+  console.error(
+    "[ops] DATABASE_URL is not set — data lives in temporary memory on each server instance and is NOT shared. Set DATABASE_URL and redeploy.",
+  );
+}
 
 type SessionRow = {
   token_hash: string;
@@ -281,7 +298,14 @@ function project(data: SharedData, me: Me, owned: string[]): SharedData {
 function view(data: SharedData, session: Session | null): OpsView {
   const me = effective(session, data);
   const owned = session?.owned ?? [];
-  return { ...project(data, me, owned), me, ownedRequestIds: owned, demoAdminCode: demoAdminCode() };
+  return {
+    ...project(data, me, owned),
+    me,
+    ownedRequestIds: owned,
+    demoAdminCode: demoAdminCode(),
+    storage: dbSource === "pglite" ? "temporary" : "database",
+    hosted: HOSTED,
+  };
 }
 
 export async function readView(): Promise<OpsView> {
@@ -397,6 +421,13 @@ export async function runAction(action: OpsAction): Promise<OpsResult> {
         c,
       );
       if (!id) return deny("exists");
+      // Same account opens the intel room once an admin verifies it.
+      try {
+        await intelRegister({ name: text(i.name, 80), phone, password, districtIds });
+        await intelLoginVolunteer(phone, password);
+      } catch (err) {
+        console.error("[ops] intel register failed", err);
+      }
       await sql`insert into ufc_volunteer_secret (volunteer_id, password_hash) values (${id}, ${hashPassword(password)})`;
       await writeSession(sql, session, { role: "volunteer", volunteerId: id, owned: session?.owned ?? [] });
       const s = await readSession(sql);
@@ -412,6 +443,11 @@ export async function runAction(action: OpsAction): Promise<OpsResult> {
         : [];
       if (!vol || !rows[0] || !verifyPassword(text(action.password, 80), rows[0].password_hash)) return deny("denied");
       await writeSession(sql, session, { role: "volunteer", volunteerId: vol.id, owned: session?.owned ?? [] });
+      try {
+        await intelLoginVolunteer(phone, text(action.password, 80));
+      } catch (err) {
+        console.error("[ops] intel login failed", err);
+      }
       const s = await readSession(sql);
       return done(vol.approval !== "pending", data, { value: vol.approval === "pending" ? "pending" : "ok" }, s);
     }
@@ -446,9 +482,17 @@ export async function runAction(action: OpsAction): Promise<OpsResult> {
       return done(true, data, { value: id }, s);
     }
 
-    case "approveVolunteer":
+    case "approveVolunteer": {
       if (!coord) return deny();
-      return done(true, engine.approveVolunteer(data, text(action.id, 40)));
+      const vol = data.volunteers.find((item) => item.id === text(action.id, 40));
+      if (!vol) return deny("missing");
+      try {
+        await syncVolunteerRole(vol.phone, true, vol.districtIds);
+      } catch (err) {
+        console.error("[ops] intel sync failed", err);
+      }
+      return done(true, engine.approveVolunteer(data, vol.id));
+    }
 
     case "setPriority":
       if (!coord || !(action.value in PRIORITY_LABEL)) return deny();

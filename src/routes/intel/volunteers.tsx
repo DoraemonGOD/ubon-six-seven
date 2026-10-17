@@ -17,9 +17,9 @@ function Volunteers() {
   if (!data.ok) return <p className="text-sm">ไม่มีสิทธิ์</p>;
   return (
     <div>
-      <h1 className="text-xl font-medium text-navy">อาสาและการยืนยัน</h1>
+      <h1 className="text-2xl font-semibold text-navy">ทีมอาสาสมัคร</h1>
       <p className="mt-1 text-sm text-muted">
-        {data.canManage ? "อนุมัติแล้วสิทธิ์มีผลทันที การถอนยืนยันทำให้คำขอถัดไปเข้าห้องนี้ไม่ได้" : "เห็นเฉพาะบัญชีตัวเอง ไม่เห็นเบอร์คนอื่น และยืนยันตัวเองไม่ได้"}
+        {data.canManage ? "ยืนยันที่นี่หรือที่ศูนย์ประสานก็ได้ ผลตรงกันทั้งสองที่ การถอนยืนยันทำให้เข้าห้องนี้ไม่ได้" : "เห็นเฉพาะบัญชีตัวเอง ไม่เห็นเบอร์คนอื่น และยืนยันตัวเองไม่ได้"}
       </p>
       <ul className="mt-4 space-y-3">
         {data.items.map((item) => (
@@ -44,7 +44,7 @@ function MemberRow({
     setDistricts((prev) => (prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]));
   }
   return (
-    <li className="border border-line bg-surface p-3 text-sm">
+    <li className="card p-4 text-sm">
       <p className="font-medium text-navy">
         {item.displayName} · {ROLE_LABEL[item.role] ?? item.role}
       </p>
@@ -56,7 +56,7 @@ function MemberRow({
               <button
                 key={district.id}
                 type="button"
-                className={districts.includes(district.id) ? "border border-navy px-2 py-1 text-xs" : "border border-line px-2 py-1 text-xs text-muted"}
+                className={districts.includes(district.id) ? "rounded-full border border-purple bg-purple-soft px-2.5 py-1 text-xs text-purple" : "rounded-full border border-line px-2.5 py-1 text-xs text-muted"}
                 onClick={() => toggle(district.id)}
               >
                 {district.name}

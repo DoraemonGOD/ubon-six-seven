@@ -14,7 +14,7 @@ function Resources() {
   if (!data.ok) return <p className="text-sm">ไม่มีสิทธิ์</p>;
   return (
     <div>
-      <h1 className="text-xl font-medium text-navy">ของและความขาด</h1>
+      <h1 className="text-2xl font-semibold text-navy">ทรัพยากรและสิ่งของ</h1>
       <p className="mt-1 text-sm text-muted">จำนวนมาจากตารางในฐานข้อมูล แถวสาธิตไม่ได้แปลว่าคลังจริงขาดของ</p>
       <ul className="mt-4 border-t border-line">
         {data.items.map((item) => (

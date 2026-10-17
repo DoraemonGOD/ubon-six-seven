@@ -42,7 +42,7 @@ function ReviewOne() {
         <p className="text-xs text-muted">
           {VERIFY_LABEL[item.verification]} · {item.isDemo ? "ข้อมูลสาธิต" : "รายงานที่ส่งเข้ามา"} · อัปเดต {item.updatedAt}
         </p>
-        <h1 className="mt-1 text-xl font-medium text-navy">{item.summary}</h1>
+        <h1 className="mt-1 text-2xl font-semibold text-navy">{item.summary}</h1>
         <p className="mt-2 text-sm leading-relaxed">{item.originalText}</p>
         <p className="mt-2 text-sm text-muted">
           {item.districtName}
@@ -85,7 +85,7 @@ function ReviewOne() {
                       void run("merge", { intoId: dup.id });
                     }}
                   >
-                    อนุมัติการรวม
+                    รวมเป็นเรื่องเดียวกัน
                   </Button>
                 ) : null}
               </li>

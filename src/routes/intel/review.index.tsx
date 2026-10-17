@@ -12,12 +12,12 @@ function ReviewList() {
   if (!data.ok) return <p className="text-sm">ไม่มีสิทธิ์</p>;
   return (
     <div>
-      <h1 className="text-xl font-medium text-navy">ศูนย์ตรวจรายงาน</h1>
+      <h1 className="text-2xl font-semibold text-navy">ตรวจสอบเหตุการณ์</h1>
       <p className="mt-1 text-sm text-muted">ต้นฉบับยังอยู่แม้จะรวมซ้ำ ข้อเสนอคือของอัตโนมัติ ไม่ใช่ข้อเท็จจริง</p>
-      <ul className="mt-4 border-t border-line">
+      <ul className="card mt-4 overflow-hidden">
         {data.items.map((item) => (
-          <li key={item.id} className="border-b border-line">
-            <Link to="/intel/review/$id" params={{ id: item.id }} className="flex min-h-16 items-center gap-3 py-3">
+          <li key={item.id} className="border-t border-line first:border-t-0">
+            <Link to="/intel/review/$id" params={{ id: item.id }} className="flex min-h-16 items-center gap-3 px-4 py-3 hover:bg-bg">
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium text-navy">
                   {VERIFY_LABEL[item.verification] ?? item.verification} · {CATEGORY_LABEL[item.category] ?? item.category}

@@ -16,7 +16,7 @@ function Missions() {
   if (!data.ok) return <p className="text-sm">ไม่มีสิทธิ์</p>;
   return (
     <div>
-      <h1 className="text-xl font-medium text-navy">ภารกิจช่วยเหลือ</h1>
+      <h1 className="text-2xl font-semibold text-navy">ภารกิจช่วยเหลือ</h1>
       <p className="mt-1 text-sm text-muted">
         {data.canAssign ? "ผู้ดูแลมอบงานและปิดงานได้ ระบบจะไม่ปิดงานเอง" : "เห็นเฉพาะงานที่มอบให้คุณ เลื่อนได้ถึงขั้นรอตรวจผล แต่ปิดงานเองไม่ได้"}
       </p>
@@ -63,7 +63,7 @@ function MissionRow({
     }
   }
   return (
-    <li className="border border-line bg-surface p-3 text-sm">
+    <li className="card p-4 text-sm">
       <p className="font-medium text-navy">{item.title}</p>
       <p className="mt-1 text-xs text-muted">
         {MISSION_LABEL[item.status] ?? item.status} · {item.updatedAt}

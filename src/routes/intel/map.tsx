@@ -43,10 +43,10 @@ function IntelMap() {
   if (!data.ok) return <p className="text-sm">ไม่มีสิทธิ์</p>;
   return (
     <div>
-      <h1 className="text-xl font-medium text-navy">แผนที่เหตุในพื้นที่ที่ได้รับอนุญาต</h1>
+      <h1 className="text-2xl font-semibold text-navy">แผนที่สถานการณ์</h1>
       <p className="mt-1 text-xs text-muted">จุดน้ำเงินคือรายงานที่ยังไม่ยืนยัน จุดแดงคือเหตุวิกฤตที่ยืนยันแล้ว ที่พักเป็นจุดของชุดสาธิตสาธารณะ</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-4">
-        <select className="min-h-11 border border-line bg-surface px-2 text-sm" value={districtId} onChange={(event) => setDistrictId(event.target.value)}>
+        <select className="min-h-11 rounded-xl border border-line bg-surface px-3 text-sm" value={districtId} onChange={(event) => setDistrictId(event.target.value)}>
           <option value="all">ทุกอำเภอ</option>
           {DISTRICTS.map((item) => (
             <option key={item.id} value={item.id}>
@@ -54,7 +54,7 @@ function IntelMap() {
             </option>
           ))}
         </select>
-        <select className="min-h-11 border border-line bg-surface px-2 text-sm" value={category} onChange={(event) => setCategory(event.target.value)}>
+        <select className="min-h-11 rounded-xl border border-line bg-surface px-3 text-sm" value={category} onChange={(event) => setCategory(event.target.value)}>
           <option value="all">ทุกหมวด</option>
           {Object.entries(CATEGORY_LABEL).map(([id, label]) => (
             <option key={id} value={id}>
@@ -62,7 +62,7 @@ function IntelMap() {
             </option>
           ))}
         </select>
-        <select className="min-h-11 border border-line bg-surface px-2 text-sm" value={verification} onChange={(event) => setVerification(event.target.value)}>
+        <select className="min-h-11 rounded-xl border border-line bg-surface px-3 text-sm" value={verification} onChange={(event) => setVerification(event.target.value)}>
           <option value="all">ทุกสถานะตรวจ</option>
           {Object.entries(VERIFY_LABEL).map(([id, label]) => (
             <option key={id} value={id}>
@@ -70,7 +70,7 @@ function IntelMap() {
             </option>
           ))}
         </select>
-        <select className="min-h-11 border border-line bg-surface px-2 text-sm" value={urgency} onChange={(event) => setUrgency(event.target.value)}>
+        <select className="min-h-11 rounded-xl border border-line bg-surface px-3 text-sm" value={urgency} onChange={(event) => setUrgency(event.target.value)}>
           <option value="all">ทุกความเร่งด่วน</option>
           {Object.entries(URGENCY_LABEL).map(([id, label]) => (
             <option key={id} value={id}>
@@ -96,7 +96,7 @@ function IntelMap() {
         />
       </div>
       {selectedItem ? (
-        <div className="mt-3 border border-line bg-surface p-3 text-sm">
+        <div className="card mt-3 p-4 text-sm">
           <p className="font-medium text-navy">{selectedItem.summary}</p>
           <p className="mt-1 text-muted">
             {selectedItem.districtName} · {VERIFY_LABEL[selectedItem.verification]} · {selectedItem.locationMasked ? "จุดถูกเบลอ" : "จุดตามที่บันทึก"}

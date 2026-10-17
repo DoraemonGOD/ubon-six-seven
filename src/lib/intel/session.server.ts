@@ -339,7 +339,9 @@ export async function overview() {
   const open = incidents.filter((row) => !row.merged_into && row.verification !== "rejected");
   const missions = await sql<{ id: string; incident_id: string; status: string; assignee_id: string | null; district_id: string }>`select id, incident_id, status, assignee_id, district_id from intel_mission`;
   const visibleMissions = missions.filter((row) => incidentInScope(member, row.district_id));
-  const suggestions = await sql<{ incident_id: string; status: string }>`select incident_id, status from intel_suggestion`;
+  const suggestions = await sql<{ id: string; incident_id: string; status: string; missing_info: string; duplicate_of: string | null; reason: string }>`
+    select id, incident_id, status, missing_info, duplicate_of, reason from intel_suggestion order by created_at desc
+  `;
   const visibleIds = new Set(open.map((row) => row.id));
   const supplies = await sql<{ district_id: string; needed: number; on_hand: number }>`select district_id, needed, on_hand from intel_supply`;
   const assigned = new Set(visibleMissions.filter((row) => row.status !== "cancelled").map((row) => row.incident_id));
@@ -360,6 +362,39 @@ export async function overview() {
       outdated: open.filter((row) => row.outdated).length,
       suggestionsPending: suggestions.filter((row) => row.status === "pending_review" && visibleIds.has(row.incident_id)).length,
     },
+    queue: open
+      .filter((row) => row.verification === "unverified" || row.verification === "needs_more_information" || (row.verification === "verified" && !assigned.has(row.id)))
+      .slice(0, 6)
+      .map((row) => ({
+        id: row.id,
+        category: row.category,
+        districtName: districtOf(row.district_id).name,
+        placeLabel: row.place_label,
+        urgency: row.urgency,
+        verification: row.verification,
+        next: row.verification === "verified" ? ("assign" as const) : ("review" as const),
+        isDemo: row.is_demo,
+      })),
+    hints: suggestions
+      .filter((row) => row.status === "pending_review" && visibleIds.has(row.incident_id) && (row.duplicate_of || row.missing_info))
+      .slice(0, 3)
+      .map((row) => {
+        const inc = open.find((item) => item.id === row.incident_id);
+        return {
+          id: row.id,
+          incidentId: row.incident_id,
+          kind: row.duplicate_of ? ("duplicate" as const) : ("missing" as const),
+          text: row.duplicate_of ? `อาจซ้ำกับ ${row.duplicate_of}` : `ข้อมูลยังขาด: ${row.missing_info}`,
+          where: inc ? `${districtOf(inc.district_id).name} · ${inc.place_label}` : "",
+        };
+      }),
+    recent: canReadAudit(member.role)
+      ? (
+          await sql<{ id: string; action: string; target: string; detail: string; at: string | Date }>`
+            select id, action, target, detail, at from intel_audit order by at desc limit 6
+          `
+        ).map((row) => ({ id: row.id, action: row.action, target: row.target, detail: row.detail, at: stamp(row.at) }))
+      : [],
   };
 }
 
@@ -708,7 +743,37 @@ export async function setMemberRole(input: { id: string; role: "pending_voluntee
     await sql`update intel_member set district_ids = ${JSON.stringify(districts)} where id = ${input.id}`;
   }
   await audit(sql, member.id, "role", input.id, input.role === "verified_volunteer" ? "ยืนยันอาสา" : "ถอนหรือปฏิเสธการยืนยัน");
+  // Keep the public volunteer board (/coord) in step with this decision.
+  const phones = await sql<{ phone: string | null }>`select phone from intel_member where id = ${input.id}`;
+  const phone = phones[0]?.phone;
+  if (phone) {
+    const approval = input.role === "verified_volunteer" ? "verified" : "pending";
+    await sql`
+      update ufc_record set data = jsonb_set(data, '{approval}', to_jsonb(${approval}::text)), updated_at = clock_timestamp()
+      where kind = 'volunteer' and data->>'phone' = ${phone}
+    `;
+  }
   return { ok: true as const };
+}
+
+/**
+ * Server-internal: called after the coordinator approves a volunteer on the
+ * public board, so the intel member with the same phone gets the same status.
+ * Not exposed as a server function — the caller has already checked the role.
+ */
+export async function syncVolunteerRole(phone: string, verified: boolean, districtIds: string[] = []) {
+  const digits = phone.replace(/\D/g, "");
+  if (!digits) return;
+  const sql = await ready();
+  const districts = districtIds.filter((id) => DISTRICTS.some((item) => item.id === id));
+  await sql`
+    update intel_member
+    set role = ${verified ? "verified_volunteer" : "pending_volunteer"},
+        district_ids = case when ${districts.length > 0} then ${JSON.stringify(districts)} else district_ids end,
+        updated_at = now()
+    where phone = ${digits} and role <> 'admin'
+  `;
+  await audit(sql, "coordinator", "role", digits.slice(-4), verified ? "ยืนยันอาสาจากหน้าศูนย์ประสาน" : "ถอนการยืนยันจากหน้าศูนย์ประสาน");
 }
 
 export async function listAudit() {

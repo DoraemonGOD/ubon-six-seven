@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/shell";
 import { Button, Field, PageIntro, Panel, Pill, controlClass } from "@/components/ui";
-import { intelLoginVolunteer, intelRegister } from "@/lib/intel/fns";
+import { intelLoginVolunteer } from "@/lib/intel/fns";
 import { suggestionsFor } from "@/lib/match";
 import {
   DISTRICTS,
@@ -122,7 +122,7 @@ function VolunteerHome() {
         .map((slot) => `${slot.label} ${slot.hint}`)
         .join(", "),
     ].join(" · ");
-    const id = await registerVolunteer({
+    const result = await registerVolunteer({
       name,
       phone: digits,
       kind: student ? "student" : "volunteer",
@@ -132,14 +132,21 @@ function VolunteerHome() {
       window: windowText,
       password,
     });
-    void intelRegister({ data: { name, phone: digits, password, districtIds } });
-    if (!id) {
-      toast("เบอร์นี้มีในระบบแล้ว ลองเข้าสู่ระบบแทน");
-      setTab("login");
-      setLoginPhone(digits);
+    if (!result.id) {
+      if (result.reason === "exists") {
+        toast("เบอร์นี้มีในระบบแล้ว ลองเข้าสู่ระบบแทน");
+        setTab("login");
+        setLoginPhone(digits);
+      } else if (result.reason === "rate") {
+        toast("สมัครถี่เกินไป รอสักครู่แล้วลองใหม่");
+      } else if (result.reason === "invalid") {
+        toast("ข้อมูลไม่ครบ ตรวจชื่อ เบอร์ ทักษะ พื้นที่ และพาหนะอีกครั้ง");
+      } else {
+        toast("ส่งใบสมัครไม่สำเร็จ เช็คอินเทอร์เน็ตแล้วลองอีกครั้ง");
+      }
       return;
     }
-    toast("สมัครแล้ว รอแอดมินยืนยันก่อนรับงาน");
+    toast.success("สมัครแล้ว ใบสมัครเด้งไปที่แอดมินแล้ว รอยืนยันก่อนรับงาน");
   }
 
   async function login() {
