@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Activity,
   Droplets,
@@ -122,9 +122,10 @@ export function AppShell({ children, bleed = false }: { children: ReactNode; ble
   const roleLabel =
     role === "coordinator" ? "แอดมิน" : activeVolunteer?.approval === "pending" ? "รอแอดมินยืนยัน" : ROLE_LABEL[role];
   const signedIn = Boolean(name);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   return (
-    <div className="flex h-dvh bg-mist lg:bg-bg">
+    <div className={cn("flex bg-mist lg:h-dvh lg:bg-bg", bleed ? "h-svh" : "min-h-svh")}>
       {/* Desktop sidebar */}
       <aside className="side-surface hidden w-64 shrink-0 flex-col gap-6 overflow-y-auto px-4 py-5 lg:flex">
         <Logo />
@@ -145,9 +146,15 @@ export function AppShell({ children, bleed = false }: { children: ReactNode; ble
         </p>
       </aside>
 
-      <div className="relative mx-auto flex h-dvh w-full max-w-md min-w-0 flex-col overflow-hidden bg-bg lg:max-w-none">
-        {/* Mobile header */}
-        <header className="side-surface flex h-16 shrink-0 items-center gap-3 px-4 lg:hidden">
+      <div
+        className={cn(
+          "relative mx-auto flex w-full max-w-md min-w-0 flex-col bg-bg lg:h-dvh lg:max-w-none lg:overflow-hidden",
+          bleed ? "h-svh overflow-hidden" : "min-h-svh",
+        )}
+      >
+        {/* Mobile header: stays put while the page scrolls under it */}
+        <div className="sticky top-0 z-40 shrink-0 lg:hidden">
+        <header className="side-surface flex h-16 items-center gap-3 px-4">
           <div className="min-w-0 flex-1">
             <Logo compact />
           </div>
@@ -164,8 +171,9 @@ export function AppShell({ children, bleed = false }: { children: ReactNode; ble
             </Link>
           )}
         </header>
-        <div className="flex shrink-0 items-center justify-center border-b border-crit/15 bg-crit-soft px-4 py-1.5 text-xs text-ink lg:hidden">
+        <div className="flex items-center justify-center border-b border-crit/15 bg-crit-soft px-4 py-1.5 text-xs text-ink">
           <Hotlines />
+        </div>
         </div>
 
         {/* Desktop top bar */}
@@ -212,12 +220,31 @@ export function AppShell({ children, bleed = false }: { children: ReactNode; ble
           </div>
         </header>
 
-        <div className={cn("relative z-0 min-h-0 flex-1", bleed ? "overflow-hidden" : "overflow-y-auto")}>
-          {bleed ? <div className="absolute inset-0">{children}</div> : children}
+        {/* Phones scroll the whole page (smooth, no jumping address bar); desktop scrolls this column. */}
+        <div
+          data-bleed={bleed ? "" : undefined}
+          className={cn(
+            "relative z-0 flex-1",
+            bleed ? "min-h-0 overflow-hidden" : "pb-[calc(4rem+env(safe-area-inset-bottom))] lg:min-h-0 lg:overflow-y-auto lg:pb-0",
+          )}
+        >
+          {bleed ? (
+            <div className="absolute inset-0">{children}</div>
+          ) : (
+            <div key={pathname} className="page-enter">
+              {children}
+            </div>
+          )}
         </div>
 
         {/* Mobile tab bar */}
-        <nav className="tabbar grid shrink-0 grid-cols-5 border-t border-line bg-surface lg:hidden" aria-label="เมนูล่าง">
+        <nav
+          className={cn(
+            "tabbar grid shrink-0 grid-cols-5 border-t border-line bg-surface/95 backdrop-blur lg:hidden",
+            bleed ? "" : "fixed inset-x-0 bottom-0 z-40 mx-auto max-w-md",
+          )}
+          aria-label="เมนูล่าง"
+        >
           {TABS.map((item) => {
             const Icon = item.icon;
             return (
@@ -225,7 +252,7 @@ export function AppShell({ children, bleed = false }: { children: ReactNode; ble
                 key={item.to}
                 to={item.to}
                 activeOptions={{ exact: "exact" in item ? item.exact : false }}
-                className="group flex min-h-16 flex-col items-center justify-center gap-1 text-xs text-muted"
+                className="group flex min-h-16 flex-col items-center justify-center gap-1 text-xs text-muted transition active:scale-95"
                 activeProps={{ className: "!text-blue font-semibold" }}
               >
                 {({ isActive }) => (
@@ -254,9 +281,9 @@ export function AppShell({ children, bleed = false }: { children: ReactNode; ble
 
         {/* Mobile drawer */}
         {open ? (
-          <div className="fade-in absolute inset-0 z-50 bg-navy/50 lg:hidden" onClick={() => setOpen(false)}>
+          <div className="fade-in fixed inset-0 z-50 bg-navy/50 lg:hidden" onClick={() => setOpen(false)}>
             <div
-              className="side-surface drawer-in absolute top-0 right-0 flex h-full w-full max-w-xs flex-col gap-5 overflow-y-auto px-4 py-4"
+              className="side-surface drawer-in absolute top-0 right-0 flex h-full overscroll-contain w-full max-w-xs flex-col gap-5 overflow-y-auto px-4 py-4"
               onClick={(event) => event.stopPropagation()}
             >
               <div className="flex items-center justify-between">

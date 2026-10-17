@@ -96,6 +96,7 @@ export function FloodMap({
   const onPickRef = useRef(onPick);
   const [ready, setReady] = useState(false);
   const [tilesOk, setTilesOk] = useState(false);
+  const [touchLock, setTouchLock] = useState(false);
   const zonesRef = useRef<L.GeoJSON | null>(null);
   onSelectRef.current = onSelect;
   onPickRef.current = onPick;
@@ -311,7 +312,31 @@ export function FloodMap({
     setReady(true);
     const observer = new ResizeObserver(() => map.invalidateSize());
     observer.observe(el);
+
+    // On a phone, a map inside a scrolling page catches the finger and the page
+    // stops scrolling (it feels jumpy). Let one-finger swipes scroll the page
+    // until the map is tapped; pinch zoom always works. Scrolling locks it again.
+    const coarse = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
+    const inPage = !el.closest("[data-bleed]");
+    let onScroll: (() => void) | null = null;
+    if (coarse && inPage) {
+      map.dragging.disable();
+      setTouchLock(true);
+      const unlock = () => {
+        if (map.dragging.enabled()) return;
+        map.dragging.enable();
+        setTouchLock(false);
+      };
+      map.on("click zoomstart", unlock);
+      onScroll = () => {
+        if (!map.dragging.enabled()) return;
+        map.dragging.disable();
+        setTouchLock(true);
+      };
+      window.addEventListener("scroll", onScroll, { passive: true });
+    }
     return () => {
+      if (onScroll) window.removeEventListener("scroll", onScroll);
       observer.disconnect();
       map.remove();
       mapRef.current = null;
@@ -422,6 +447,11 @@ export function FloodMap({
   return (
     <div className="absolute inset-0 z-0 isolate overflow-hidden bg-mist" data-map="ubon">
       <div ref={holder} className="h-full w-full" />
+      {touchLock ? (
+        <div className="map-touch-hint pointer-events-none absolute top-1/2 left-1/2 z-[500] -translate-x-1/2 -translate-y-1/2 rounded-full bg-navy/70 px-3 py-1 text-[11px] whitespace-nowrap text-surface">
+          แตะแผนที่เพื่อเลื่อน · สองนิ้วเพื่อซูม
+        </div>
+      ) : null}
       {chrome ? (
         <>
           <div className="pointer-events-none absolute top-3 left-3 z-10 max-w-56 rounded-xl bg-surface/95 px-3 py-2 text-xs text-ink shadow-sm">

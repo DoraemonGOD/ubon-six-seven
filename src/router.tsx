@@ -3,5 +3,6 @@ import { AppErrorComponent } from "@/lib/error-component";
 import { routeTree } from "./routeTree.gen";
 
 export function getRouter() {
-  return createRouter({ routeTree, defaultErrorComponent: AppErrorComponent });
+  // New page starts at the top; back/forward returns to where you were.
+  return createRouter({ routeTree, defaultErrorComponent: AppErrorComponent, scrollRestoration: true });
 }

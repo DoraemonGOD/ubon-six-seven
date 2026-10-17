@@ -1,6 +1,6 @@
 // Layout for the intel room: its own navy sidebar, a slim top bar and a
 // one-line demo notice, so the room reads as a separate, restricted workspace.
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   ArrowLeft,
   Bell,
@@ -53,6 +53,7 @@ export function IntelFrame({
   const alertCount = useFloodStore((s) => s.alerts.length);
   const newRequests = useFloodStore((s) => s.requests.filter((r) => r.status === "submitted").length);
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const links = member.role === "admin" ? [...LINKS, AUDIT] : LINKS;
   const signOut = async () => {
     await logout();
@@ -61,7 +62,7 @@ export function IntelFrame({
   const badge = alertCount || newRequests;
 
   return (
-    <div className="flex h-dvh bg-bg">
+    <div className="flex min-h-svh bg-bg lg:h-dvh">
       {/* Desktop sidebar */}
       <aside className="side-surface hidden w-64 shrink-0 flex-col gap-5 overflow-y-auto px-4 py-5 lg:flex">
         <Link to="/intel" className="flex items-center gap-3">
@@ -117,7 +118,7 @@ export function IntelFrame({
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile header + tabs */}
-        <header className="side-surface shrink-0 px-4 pt-3 lg:hidden">
+        <header className="side-surface sticky top-0 z-40 shrink-0 px-4 pt-3 lg:hidden">
           <div className="flex items-center gap-3">
             <Link to="/" aria-label="กลับหน้าเว็บหลัก" className="grid size-9 place-items-center rounded-xl bg-white/10 text-surface">
               <ArrowLeft className="size-4" />
@@ -178,13 +179,15 @@ export function IntelFrame({
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-y-auto">
+        <main className="flex-1 lg:min-h-0 lg:overflow-y-auto">
           <div className="mx-auto max-w-6xl px-4 py-5 lg:px-6">
             <p className={cn("mb-4 flex items-start gap-2 rounded-xl border border-watch/25 bg-watch-soft px-3 py-2 text-xs text-watch")}>
               <span aria-hidden>⚠️</span>
               <span>ข้อมูลตั้งต้นในห้องนี้เป็นข้อมูลจำลองเพื่อสาธิต ข้อเสนอของระบบมาจากกฎคีย์เวิร์ด ไม่ใช่ AI และไม่ใช่คำสั่งการกู้ภัย</span>
             </p>
-            {children}
+            <div key={pathname} className="page-enter">
+              {children}
+            </div>
           </div>
         </main>
       </div>
