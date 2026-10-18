@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Check, DoorOpen, HeartHandshake, LifeBuoy, PenLine, Pill, Truck, Utensils, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { LocationField, type GeoValue } from "@/components/location-field";
@@ -12,10 +13,23 @@ import { cn } from "@/lib/cn";
 
 export const Route = createFileRoute("/help/new")({ component: HelpNew });
 
+// What each kind of help looks like on the picker: an icon, a colour and a
+// one-line example so people recognise their situation at a glance.
+const TYPE_LOOK: Record<HelpType, { icon: LucideIcon; hint: string; tile: string; on: string }> = {
+  trapped: { icon: LifeBuoy, hint: "น้ำล้อม ออกเองไม่ได้", tile: "bg-crit-soft text-crit", on: "border-crit ring-crit/15" },
+  evacuation: { icon: DoorOpen, hint: "ต้องการย้ายไปที่ปลอดภัย", tile: "bg-orange-soft text-orange", on: "border-orange ring-orange/15" },
+  food: { icon: Utensils, hint: "ข้าว น้ำดื่ม นมเด็ก", tile: "bg-ok-soft text-ok", on: "border-ok ring-ok/15" },
+  medicine: { icon: Pill, hint: "ยาประจำตัว ของใช้จำเป็น", tile: "bg-blue-soft text-blue", on: "border-blue ring-blue/15" },
+  vulnerable: { icon: HeartHandshake, hint: "ต้องมีคนช่วยดูแลเป็นพิเศษ", tile: "bg-purple-soft text-purple", on: "border-purple ring-purple/15" },
+  transport: { icon: Truck, hint: "ต้องการเรือหรือรถ", tile: "bg-watch-soft text-watch", on: "border-watch ring-watch/15" },
+  other: { icon: PenLine, hint: "พิมพ์บอกเองได้", tile: "bg-bg text-ink", on: "border-navy ring-navy/15" },
+};
+
 function HelpNew() {
   const navigate = useNavigate();
   const submitRequest = useFloodStore((s) => s.submitRequest);
   const [type, setType] = useState<HelpType | "">("");
+  const [otherText, setOtherText] = useState("");
   const [priority, setPriority] = useState<Priority>("high");
   const [districtId, setDistrictId] = useState("mueang");
   const [placeLabel, setPlaceLabel] = useState("");
@@ -30,7 +44,11 @@ function HelpNew() {
   async function submit() {
     const digits = phone.replace(/\D/g, "");
     const next = {
-      type: type ? undefined : "เลือกเรื่องที่ต้องการความช่วยเหลือ",
+      type: !type
+        ? "เลือกเรื่องที่ต้องการความช่วยเหลือ"
+        : type === "other" && otherText.trim().length < 2
+          ? "พิมพ์บอกว่าต้องการความช่วยเหลือเรื่องอะไร"
+          : undefined,
       place: placeLabel.trim().length >= 2 ? undefined : "ใส่จุดสังเกต เช่น ชุมชน หรือวัด",
       detail: detail.trim().length >= 2 ? undefined : "บอกสั้น ๆ ว่าเกิดอะไรขึ้น",
       phone: digits.length >= 9 ? undefined : "ใส่เบอร์ 9–10 หลัก เช่น 0812345678",
@@ -42,13 +60,16 @@ function HelpNew() {
       return;
     }
     setBusy(true);
+    // "Other" keeps what the person typed at the front of the details, so the
+    // coordinator sees it first.
+    const fullDetail = type === "other" ? `เรื่อง: ${otherText.trim()}\n${detail.trim()}` : detail;
     const id = await submitRequest({
       type,
       priority,
       districtId,
       placeLabel,
       people: Math.max(1, people || 1),
-      detail,
+      detail: fullDetail,
       phone: digits,
       lng: pin?.lng,
       lat: pin?.lat,
@@ -66,7 +87,7 @@ function HelpNew() {
       data: {
         districtId,
         placeLabel,
-        text: detail,
+        text: fullDetail,
         people,
         phone: digits,
         category,
@@ -93,27 +114,60 @@ function HelpNew() {
         </Panel>
         <div className="space-y-4">
           <Field label="ต้องการความช่วยเหลือเรื่องอะไร" error={errors.type}>
-            <div className="grid grid-cols-1 gap-2">
-              {HELP_TYPES.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  aria-pressed={type === item}
-                  onClick={() => {
-                    setType(item);
-                    setErrors((prev) => ({ ...prev, type: undefined }));
-                    if (item === "trapped" || item === "vulnerable") setPriority("critical");
-                    else if (item === "evacuation" || item === "medicine") setPriority("high");
-                  }}
-                  className={cn(
-                    "min-h-11 rounded-xl border px-3 text-left text-sm font-semibold",
-                    type === item ? "border-blue bg-blue-soft text-blue" : "border-line bg-surface",
-                  )}
-                >
-                  {TYPE_LABEL[item]}
-                </button>
-              ))}
+            <div className="grid grid-cols-2 gap-2.5">
+              {HELP_TYPES.map((item) => {
+                const look = TYPE_LOOK[item];
+                const Icon = look.icon;
+                const on = type === item;
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => {
+                      setType(item);
+                      setErrors((prev) => ({ ...prev, type: undefined }));
+                      if (item === "trapped" || item === "vulnerable") setPriority("critical");
+                      else if (item === "evacuation" || item === "medicine") setPriority("high");
+                    }}
+                    className={cn(
+                      "relative flex min-h-[7.5rem] flex-col items-start gap-2 rounded-2xl border-2 bg-surface p-3 text-left shadow-sm transition active:scale-[0.97]",
+                      on ? cn(look.on, "ring-4") : "border-line hover:border-muted/50",
+                      item === "other" && "col-span-2 min-h-0 flex-row items-center",
+                    )}
+                  >
+                    <span className={cn("grid size-11 shrink-0 place-items-center rounded-xl", look.tile)}>
+                      <Icon className="size-6" strokeWidth={2.2} />
+                    </span>
+                    <span className="min-w-0 pr-5">
+                      <span className="block text-[15px] leading-snug font-semibold text-ink">{TYPE_LABEL[item]}</span>
+                      <span className="mt-0.5 block text-xs leading-snug text-muted">{look.hint}</span>
+                    </span>
+                    {on ? (
+                      <span className="pop-in absolute top-2.5 right-2.5 grid size-6 place-items-center rounded-full bg-navy text-surface">
+                        <Check className="size-4" strokeWidth={3} />
+                      </span>
+                    ) : null}
+                  </button>
+                );
+              })}
             </div>
+            {type === "other" ? (
+              <div className="fade-in mt-2.5">
+                <input
+                  autoFocus
+                  className={controlClass}
+                  value={otherText}
+                  maxLength={120}
+                  placeholder="เช่น ไฟดูด ต้นไม้ล้มขวางทาง"
+                  aria-label="ระบุเรื่องที่ต้องการความช่วยเหลือ"
+                  onChange={(e) => {
+                    setOtherText(e.target.value);
+                    setErrors((prev) => ({ ...prev, type: undefined }));
+                  }}
+                />
+              </div>
+            ) : null}
           </Field>
           <Field label="พิกัด" hint="กด GPS ได้เลย ระบบจะเลือกอำเภอให้ พิกัดจริงเห็นเฉพาะผู้ประสานและทีมที่รับงาน">
             <LocationField
